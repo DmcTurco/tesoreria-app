@@ -10,11 +10,8 @@ import {
   ChevronLeft,
   Loader2,
 } from "lucide-react";
-import axios from "axios";
+import { useLogin } from "../hook/useLogin";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
-
-// Estilos warm por rol (value: 0,1,2) — clases fijas para que Tailwind las detecte
 const ROL_STYLES = {
   0: {
     bg: "bg-orange-50",
@@ -60,8 +57,6 @@ const ROL_STYLES = {
   },
 };
 
-const DEFAULT_STYLE = ROL_STYLES[0];
-
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -69,42 +64,30 @@ export default function Login() {
   const rolSeleccionado = location.state?.rol ?? null;
 
   const [form, setForm] = useState({ username: "", password: "" });
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+
+  const { loading, error, login } = useLogin();
 
   if (!rolSeleccionado) {
     navigate("../role", { replace: true });
     return null;
   }
 
-  const s = ROL_STYLES[rolSeleccionado.value] ?? DEFAULT_STYLE;
+  const s = ROL_STYLES[rolSeleccionado.value] ?? ROL_STYLES[0];
 
-  const handleBack = () => navigate("../role");
-
-  const handleChange = (e) => {
+  const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-    setError("");
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.username || !form.password) {
-      setError("Ingresa tu usuario y contraseña");
-      return;
-    }
-    setLoading(true);
     try {
-      const { data } = await axios.post(`${API_URL}/login`, form);
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      navigate("../dashboard");
-    } catch (err) {
-      setError(
-        err.response?.data?.message ?? "Usuario o contraseña incorrectos",
-      );
-    } finally {
-      setLoading(false);
+      const { user } = await login(form);
+
+      // Redirigir según rol: 0 tesorero | 1 profesora | 2 padre
+      const rutas = { 0: "../dashboard", 1: "../profesora", 2: "../padre" };
+      navigate(rutas[user.role] ?? "../dashboard");
+    } catch {
+      // El error ya lo maneja el hook en su estado `error`
     }
   };
 
@@ -123,7 +106,7 @@ export default function Login() {
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-stone-100 p-7 relative z-10">
         {/* Volver */}
         <button
-          onClick={handleBack}
+          onClick={() => navigate("../role")}
           className={`flex items-center gap-1.5 text-stone-400 text-sm font-semibold mb-6 transition-colors ${s.backHover}`}
         >
           <ChevronLeft size={15} strokeWidth={2.5} />
@@ -157,7 +140,6 @@ export default function Login() {
 
         {/* Formulario */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          {/* Usuario */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-stone-600 tracking-wide">
               Usuario
@@ -178,7 +160,6 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Contraseña */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-stone-600 tracking-wide">
               Contraseña
@@ -208,7 +189,7 @@ export default function Login() {
             </div>
           </div>
 
-          {/* Error */}
+          {/* Error del hook */}
           {error && (
             <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
               <AlertCircle size={14} className="text-red-400 shrink-0" />
@@ -218,7 +199,6 @@ export default function Login() {
             </div>
           )}
 
-          {/* Botón */}
           <button
             type="submit"
             disabled={loading}
@@ -232,7 +212,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Divisor inferior */}
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px bg-stone-100" />
           <span className="text-[10px] text-stone-300 font-medium">

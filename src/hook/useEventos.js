@@ -17,9 +17,8 @@ export const useEventos = () => {
             setError(null);
 
             const response = await api.get("/eventos");
-
-            setEventos(response.data ?? []);
-            return response.data;
+            setEventos(response ?? []);
+            return response;
 
         } catch (err) {
             console.error("❌ Error en getEventos:", err);

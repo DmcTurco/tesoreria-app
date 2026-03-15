@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   Plus,
   TrendingUp,
@@ -6,12 +6,10 @@ import {
   Loader2,
   X,
   Trash2,
+  AlertCircle,
 } from "lucide-react";
-import api from "../../api/client";
-import {
-  MOVIMIENTO_TIPO,
-  MOVIMIENTO_TIPO_LABEL,
-} from "../../constants/estados";
+import { useMovimientos } from "../../hook/useMovimientos";
+import { MOVIMIENTO_TIPO } from "../../constants/estados";
 
 const CATEGORIAS = [
   "Cuota / Pago",
@@ -24,43 +22,43 @@ const CATEGORIAS = [
 ];
 
 export default function Movimientos() {
-  const [data, setData] = useState({
-    data: [],
-    total_ingresos: 0,
-    total_egresos: 0,
-    saldo: 0,
-  });
-  const [loading, setLoading] = useState(true);
+  const [filtroTipo, setFiltroTipo] = useState("");
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState(null);
-  const [filtroTipo, setFiltroTipo] = useState("");
 
-  const load = useCallback(() => {
-    setLoading(true);
-    const params = filtroTipo !== "" ? { tipo: filtroTipo } : {};
-    api
-      .get("/movimientos", { params })
-      .then((r) => setData(r.data))
-      .finally(() => setLoading(false));
-  }, [filtroTipo]);
+  const {
+    loading,
+    error,
+    movimientos,
+    totalIngresos,
+    totalEgresos,
+    saldo,
+    getMovimientos,
+    createMovimiento,
+    deleteMovimiento,
+  } = useMovimientos();
 
+  // Carga inicial y cuando cambia el filtro
   useEffect(() => {
-    load();
-  }, [load]);
+    getMovimientos({ tipo: filtroTipo !== "" ? Number(filtroTipo) : null });
+  }, [filtroTipo]);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2800);
   };
 
+  const reload = () =>
+    getMovimientos({ tipo: filtroTipo !== "" ? Number(filtroTipo) : null });
+
   const handleDelete = async (id) => {
     if (!confirm("¿Eliminar este movimiento?")) return;
     try {
-      await api.delete(`/movimientos/${id}`);
-      load();
+      await deleteMovimiento(id);
       showToast("Eliminado");
+      reload();
     } catch (e) {
-      showToast(e.response?.data?.message ?? "Error", "err");
+      showToast(e.message ?? "Error", "err");
     }
   };
 
@@ -68,6 +66,7 @@ export default function Movimientos() {
     <div className="flex flex-col gap-5">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-stone-800">Movimientos</h1>
@@ -81,30 +80,38 @@ export default function Movimientos() {
         </button>
       </div>
 
-      {/* Resumen del período */}
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+          <AlertCircle size={16} className="text-red-400 shrink-0" />
+          <p className="text-sm text-red-500 font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* Resumen */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-emerald-50 rounded-2xl p-4 text-center">
           <TrendingUp size={18} className="text-emerald-500 mx-auto mb-1" />
           <p className="text-lg font-black text-emerald-700">
-            S/ {Number(data.total_ingresos).toFixed(2)}
+            S/ {Number(totalIngresos).toFixed(2)}
           </p>
           <p className="text-[11px] text-emerald-600 font-medium">Ingresos</p>
         </div>
         <div className="bg-red-50 rounded-2xl p-4 text-center">
           <TrendingDown size={18} className="text-red-400 mx-auto mb-1" />
           <p className="text-lg font-black text-red-500">
-            S/ {Number(data.total_egresos).toFixed(2)}
+            S/ {Number(totalEgresos).toFixed(2)}
           </p>
           <p className="text-[11px] text-red-400 font-medium">Egresos</p>
         </div>
         <div
-          className={`rounded-2xl p-4 text-center ${data.saldo >= 0 ? "bg-amber-50" : "bg-orange-50"}`}
+          className={`rounded-2xl p-4 text-center ${saldo >= 0 ? "bg-amber-50" : "bg-orange-50"}`}
         >
           <p className="text-[11px] font-medium text-stone-400 mb-1">Saldo</p>
           <p
-            className={`text-lg font-black ${data.saldo >= 0 ? "text-amber-700" : "text-orange-600"}`}
+            className={`text-lg font-black ${saldo >= 0 ? "text-amber-700" : "text-orange-600"}`}
           >
-            S/ {Number(data.saldo).toFixed(2)}
+            S/ {Number(saldo).toFixed(2)}
           </p>
         </div>
       </div>
@@ -120,7 +127,11 @@ export default function Movimientos() {
             key={v}
             onClick={() => setFiltroTipo(v)}
             className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all
-              ${filtroTipo === v ? "bg-amber-500 text-white" : "bg-white border border-stone-200 text-stone-500 hover:border-amber-300"}`}
+              ${
+                filtroTipo === v
+                  ? "bg-amber-500 text-white"
+                  : "bg-white border border-stone-200 text-stone-500 hover:border-amber-300"
+              }`}
           >
             {l}
           </button>
@@ -133,12 +144,12 @@ export default function Movimientos() {
           <div className="flex justify-center py-10">
             <Loader2 size={24} className="text-amber-400 animate-spin" />
           </div>
-        ) : (data.data ?? []).length === 0 ? (
+        ) : movimientos.length === 0 ? (
           <p className="text-center text-stone-400 text-sm py-10">
             Sin movimientos
           </p>
         ) : (
-          (data.data ?? []).map((m) => (
+          movimientos.map((m) => (
             <div key={m.id} className="flex items-center gap-3 px-4 py-3 group">
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
@@ -159,7 +170,8 @@ export default function Movimientos() {
                 </p>
               </div>
               <span
-                className={`text-sm font-bold shrink-0 ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}
+                className={`text-sm font-bold shrink-0
+                ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}
               >
                 {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{" "}
                 {Number(m.monto).toFixed(2)}
@@ -177,11 +189,12 @@ export default function Movimientos() {
 
       {modal && (
         <ModalNuevoMovimiento
+          createMovimiento={createMovimiento}
           onClose={() => setModal(false)}
           onSaved={() => {
-            load();
             setModal(false);
             showToast("Movimiento registrado");
+            reload();
           }}
           onError={(msg) => showToast(msg, "err")}
         />
@@ -190,7 +203,8 @@ export default function Movimientos() {
   );
 }
 
-function ModalNuevoMovimiento({ onClose, onSaved, onError }) {
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
   const [form, setForm] = useState({
     tipo: "0",
     monto: "",
@@ -210,10 +224,10 @@ function ModalNuevoMovimiento({ onClose, onSaved, onError }) {
     }
     setLoading(true);
     try {
-      await api.post("/movimientos", { ...form, tipo: Number(form.tipo) });
+      await createMovimiento({ ...form, tipo: Number(form.tipo) });
       onSaved();
     } catch (e) {
-      onError(e.response?.data?.message ?? "Error");
+      onError(e.message ?? "Error");
     } finally {
       setLoading(false);
     }
@@ -221,6 +235,7 @@ function ModalNuevoMovimiento({ onClose, onSaved, onError }) {
 
   return (
     <Modal titulo="Nuevo movimiento" onClose={onClose}>
+      {/* Toggle ingreso/egreso */}
       <div className="flex bg-stone-100 rounded-xl p-1 gap-1 mb-1">
         {[
           ["0", "Ingreso"],
@@ -230,7 +245,13 @@ function ModalNuevoMovimiento({ onClose, onSaved, onError }) {
             key={v}
             onClick={() => setForm((p) => ({ ...p, tipo: v }))}
             className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
-              ${form.tipo === v ? (v === "0" ? "bg-emerald-500 text-white" : "bg-red-500 text-white") : "text-stone-500"}`}
+              ${
+                form.tipo === v
+                  ? v === "0"
+                    ? "bg-emerald-500 text-white"
+                    : "bg-red-500 text-white"
+                  : "text-stone-500"
+              }`}
           >
             {l}
           </button>
@@ -280,7 +301,7 @@ function ModalNuevoMovimiento({ onClose, onSaved, onError }) {
   );
 }
 
-// ── Shared ────────────────────────────────────────────────────────────────────
+// ── Atoms ─────────────────────────────────────────────────────────────────────
 function Modal({ titulo, onClose, children }) {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
@@ -288,7 +309,7 @@ function Modal({ titulo, onClose, children }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white">
           <p className="font-black text-stone-800 text-sm">{titulo}</p>
           <button onClick={onClose}>
-            <X size={18} className="text-stone-400" />
+            <X size={18} className="text-stone-400 hover:text-stone-600" />
           </button>
         </div>
         <div className="p-5 flex flex-col gap-3">{children}</div>

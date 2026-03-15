@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import {
   TrendingUp,
   TrendingDown,
@@ -8,25 +8,29 @@ import {
   Users,
   ArrowRight,
   Loader2,
+  AlertCircle,
 } from "lucide-react";
-import api from "../../api/client";
+import { useResumen } from "../../hook/useResumen";
 import { MOVIMIENTO_TIPO } from "../../constants/estados";
 
 export default function Resumen({ onTabChange }) {
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const { loading, error, resumen, getResumen } = useResumen();
 
   useEffect(() => {
-    api
-      .get("/reportes/dashboard")
-      .then((r) => setData(r.data))
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    getResumen();
   }, []);
 
   if (loading) return <LoadingState />;
 
-  const caja = data?.caja ?? {};
+  if (error)
+    return (
+      <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-4 mt-4">
+        <AlertCircle size={16} className="text-red-400 shrink-0" />
+        <p className="text-sm text-red-500 font-medium">{error}</p>
+      </div>
+    );
+
+  const caja = resumen?.caja ?? {};
 
   return (
     <div className="flex flex-col gap-6">
@@ -69,8 +73,8 @@ export default function Resumen({ onTabChange }) {
         />
         <StatCard
           label="Multas pendientes"
-          value={`S/ ${Number(data?.multas?.monto_pendiente ?? 0).toFixed(2)}`}
-          sub={`${data?.multas?.cantidad ?? 0} sin cobrar`}
+          value={`S/ ${Number(resumen?.multas?.monto_pendiente ?? 0).toFixed(2)}`}
+          sub={`${resumen?.multas?.cantidad ?? 0} sin cobrar`}
           icon={AlertTriangle}
           iconBg="bg-orange-100"
           iconColor="text-orange-500"
@@ -88,7 +92,7 @@ export default function Resumen({ onTabChange }) {
           </div>
           <div>
             <p className="text-2xl font-black text-stone-800">
-              {data?.total_padres ?? 0}
+              {resumen?.total_padres ?? 0}
             </p>
             <p className="text-xs text-stone-400 font-medium">
               Padres registrados
@@ -104,7 +108,7 @@ export default function Resumen({ onTabChange }) {
           </div>
           <div>
             <p className="text-2xl font-black text-stone-800">
-              {data?.eventos_activos ?? 0}
+              {resumen?.eventos_activos ?? 0}
             </p>
             <p className="text-xs text-stone-400 font-medium">
               Eventos activos
@@ -127,12 +131,12 @@ export default function Resumen({ onTabChange }) {
           </button>
         </div>
         <div className="divide-y divide-stone-50">
-          {(data?.ultimos_movimientos ?? []).length === 0 && (
+          {(resumen?.ultimos_movimientos ?? []).length === 0 && (
             <p className="text-center text-stone-400 text-sm py-8">
               Sin movimientos aún
             </p>
           )}
-          {(data?.ultimos_movimientos ?? []).map((m) => (
+          {(resumen?.ultimos_movimientos ?? []).map((m) => (
             <div key={m.id} className="flex items-center gap-3 px-5 py-3">
               <div
                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0
@@ -167,6 +171,7 @@ export default function Resumen({ onTabChange }) {
   );
 }
 
+// ── Atoms ─────────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, icon: Icon, iconBg, iconColor, trend }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-100 p-4">

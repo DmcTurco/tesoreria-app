@@ -1,30 +1,43 @@
-import { useEffect, useState, useCallback } from "react";
-import { Plus, Search, X, Loader2, Ban } from "lucide-react";
-import api from "../../api/client";
+import { useEffect, useState } from "react";
+import { Plus, Search, X, Loader2, Ban, AlertCircle } from "lucide-react";
+import { usePagos } from "../../hook/usePagos";
+import { usePadres } from "../../hook/usePadres";
 import { PAGO_ESTADO, PAGO_ESTADO_LABEL } from "../../constants/estados";
 
+const PAGO_COLORS = {
+  0: "bg-yellow-50 text-yellow-700",
+  1: "bg-emerald-50 text-emerald-700",
+  2: "bg-stone-100 text-stone-500",
+};
+
 export default function Pagos() {
-  const [pagos, setPagos] = useState([]);
-  const [padres, setPadres] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    Promise.all([api.get("/pagos"), api.get("/padres")])
-      .then(([rP, rPa]) => {
-        setPagos(rP.data);
-        setPadres(rPa.data);
-      })
-      .finally(() => setLoading(false));
+  const {
+    loading: loadingPagos,
+    error: errorPagos,
+    pagos,
+    getPagos,
+    createPago,
+    anularPago,
+  } = usePagos();
+  const { loading: loadingPadres, padres, getPadres } = usePadres();
+
+  const loading = loadingPagos || loadingPadres;
+
+  // Carga inicial
+  useEffect(() => {
+    getPagos();
+    getPadres();
   }, []);
 
+  // Recarga pagos cuando cambia el filtro de estado
   useEffect(() => {
-    load();
-  }, [load]);
+    getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
+  }, [filtroEstado]);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -34,11 +47,11 @@ export default function Pagos() {
   const handleAnular = async (id) => {
     if (!confirm("¿Anular este pago?")) return;
     try {
-      await api.put(`/pagos/${id}/anular`);
+      await anularPago(id);
       showToast("Pago anulado");
-      load();
+      getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
     } catch (e) {
-      showToast(e.response?.data?.message ?? "Error", "err");
+      showToast(e.message ?? "Error", "err");
     }
   };
 
@@ -56,6 +69,7 @@ export default function Pagos() {
     <div className="flex flex-col gap-5">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-stone-800">Pagos</h1>
@@ -72,6 +86,14 @@ export default function Pagos() {
         </button>
       </div>
 
+      {/* Error */}
+      {errorPagos && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+          <AlertCircle size={16} className="text-red-400 shrink-0" />
+          <p className="text-sm text-red-500 font-medium">{errorPagos}</p>
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="flex gap-2">
         <div className="relative flex-1">
@@ -82,7 +104,7 @@ export default function Pagos() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar..."
+            placeholder="Buscar por nombre o concepto..."
             className="w-full h-10 pl-8 pr-3 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-amber-400 transition-colors"
           />
         </div>
@@ -98,7 +120,7 @@ export default function Pagos() {
         </select>
       </div>
 
-      {/* Tabla */}
+      {/* Lista */}
       <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-10">
@@ -148,11 +170,14 @@ export default function Pagos() {
       {modal && (
         <ModalNuevoPago
           padres={padres}
+          createPago={createPago}
           onClose={() => setModal(false)}
           onSaved={() => {
-            load();
-            showToast("Pago registrado");
             setModal(false);
+            showToast("Pago registrado");
+            getPagos({
+              estado: filtroEstado !== "" ? Number(filtroEstado) : null,
+            });
           }}
           onError={(msg) => showToast(msg, "err")}
         />
@@ -161,7 +186,8 @@ export default function Pagos() {
   );
 }
 
-function ModalNuevoPago({ padres, onClose, onSaved, onError }) {
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
   const [form, setForm] = useState({
     padre_id: "",
     concepto: "",
@@ -178,10 +204,10 @@ function ModalNuevoPago({ padres, onClose, onSaved, onError }) {
     }
     setLoading(true);
     try {
-      await api.post("/pagos", form);
+      await createPago(form);
       onSaved();
     } catch (e) {
-      onError(e.response?.data?.message ?? "Error");
+      onError(e.message ?? "Error");
     } finally {
       setLoading(false);
     }
@@ -232,13 +258,7 @@ function ModalNuevoPago({ padres, onClose, onSaved, onError }) {
   );
 }
 
-// ── Shared ────────────────────────────────────────────────────────────────────
-const PAGO_COLORS = {
-  0: "bg-yellow-50 text-yellow-700",
-  1: "bg-emerald-50 text-emerald-700",
-  2: "bg-stone-100 text-stone-500",
-};
-
+// ── Atoms ─────────────────────────────────────────────────────────────────────
 function EstadoBadge({ estado, map, colors }) {
   return (
     <span
@@ -256,7 +276,7 @@ function Modal({ titulo, onClose, children }) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white">
           <p className="font-black text-stone-800 text-sm">{titulo}</p>
           <button onClick={onClose}>
-            <X size={18} className="text-stone-400" />
+            <X size={18} className="text-stone-400 hover:text-stone-600" />
           </button>
         </div>
         <div className="p-5 flex flex-col gap-3">{children}</div>

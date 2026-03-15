@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import RoleSelector from "./pages/RoleSelector";
 import Login from "./pages/Login";
 import DashboardTesorero from "./pages/tesorero/DashboardTesorero";
+import DashboardProfesora from "./pages/profesora/DashboardProfesora";
 
 function App() {
   return (
@@ -11,6 +12,7 @@ function App() {
         <Route path="role" element={<RoleSelector />} />
         <Route path="login" element={<Login />} />
         <Route path="dashboard" element={<DashboardTesorero />} />
+        <Route path="profesora" element={<DashboardProfesora />} />
         {/* próximas rutas */}
       </Routes>
     </BrowserRouter>

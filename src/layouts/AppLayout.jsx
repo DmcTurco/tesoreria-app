@@ -47,7 +47,7 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
   const nav = NAV_BY_ROLE[user?.role] ?? NAV_TESORERO;
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem("auth_token");
     localStorage.removeItem("user");
     navigate("/role");
   };

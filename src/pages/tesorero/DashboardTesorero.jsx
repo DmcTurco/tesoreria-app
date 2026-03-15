@@ -12,10 +12,10 @@ import Presupuesto from "./Presupuesto";
 export default function DashboardTesorero() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem("user") ?? "null");
+  const token = localStorage.getItem("auth_token"); // ← misma key que api.js
   const [tab, setTab] = useState("resumen");
 
-  // Si no hay sesión válida redirigir
-  if (!user) {
+  if (!user || !token) {
     navigate("/role", { replace: true });
     return null;
   }

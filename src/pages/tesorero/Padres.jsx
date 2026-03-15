@@ -1,41 +1,40 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search,
   Plus,
-  UserCircle,
   ChevronRight,
   X,
   Loader2,
   KeyRound,
   Trash2,
-  QrCode,
 } from "lucide-react";
-import api from "../../api/client";
+import { usePadres } from "../../hook/usePadres";
 
 export default function Padres() {
-  const [padres, setPadres] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null); // "nuevo" | padre_obj
   const [toast, setToast] = useState(null);
 
-  const load = useCallback(() => {
-    setLoading(true);
-    api
-      .get("/padres")
-      .then((r) => setPadres(r.data))
-      .finally(() => setLoading(false));
-  }, []);
+  const {
+    loading,
+    error,
+    padres,
+    getPadres,
+    createPadre,
+    resetPassword,
+    getQR,
+    deletePadre,
+  } = usePadres();
 
   useEffect(() => {
-    load();
-  }, [load]);
+    getPadres();
+  }, []);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2800);
   };
-
+  console.log(padres);
   const filtrados = padres.filter(
     (p) =>
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -112,32 +111,34 @@ export default function Padres() {
           ))}
       </div>
 
-      {/* Modal nuevo padre */}
       {modal === "nuevo" && (
         <ModalNuevoPadre
+          createPadre={createPadre}
           onClose={() => setModal(null)}
           onSaved={() => {
-            load();
-            showToast("Padre registrado");
             setModal(null);
+            showToast("Padre registrado");
+            getPadres();
           }}
           onError={(msg) => showToast(msg, "err")}
         />
       )}
 
-      {/* Modal detalle padre */}
       {modal && modal !== "nuevo" && (
         <ModalDetallePadre
           padre={modal}
+          resetPassword={resetPassword}
+          getQR={getQR}
+          deletePadre={deletePadre}
           onClose={() => setModal(null)}
           onUpdated={() => {
-            load();
             showToast("Actualizado");
+            getPadres();
           }}
           onDeleted={() => {
-            load();
-            showToast("Eliminado");
             setModal(null);
+            showToast("Eliminado");
+            getPadres();
           }}
           onError={(msg) => showToast(msg, "err")}
         />
@@ -146,8 +147,8 @@ export default function Padres() {
   );
 }
 
-// ── Modal Nuevo Padre ─────────────────────────────────────────────────────────
-function ModalNuevoPadre({ onClose, onSaved, onError }) {
+// ── Modal nuevo padre ─────────────────────────────────────────────────────────
+function ModalNuevoPadre({ createPadre, onClose, onSaved, onError }) {
   const [form, setForm] = useState({
     nombre: "",
     hijo: "",
@@ -156,7 +157,6 @@ function ModalNuevoPadre({ onClose, onSaved, onError }) {
     password: "",
   });
   const [loading, setLoading] = useState(false);
-
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
   const handleSave = async () => {
@@ -166,10 +166,10 @@ function ModalNuevoPadre({ onClose, onSaved, onError }) {
     }
     setLoading(true);
     try {
-      await api.post("/padres", form);
+      await createPadre(form);
       onSaved();
     } catch (e) {
-      onError(e.response?.data?.message ?? "Error al guardar");
+      onError(e.message ?? "Error al guardar");
     } finally {
       setLoading(false);
     }
@@ -218,9 +218,18 @@ function ModalNuevoPadre({ onClose, onSaved, onError }) {
   );
 }
 
-// ── Modal Detalle Padre ───────────────────────────────────────────────────────
-function ModalDetallePadre({ padre, onClose, onUpdated, onDeleted, onError }) {
-  const [tab, setTab] = useState("info"); // info | pass | qr
+// ── Modal detalle padre ───────────────────────────────────────────────────────
+function ModalDetallePadre({
+  padre,
+  resetPassword,
+  getQR,
+  deletePadre,
+  onClose,
+  onUpdated,
+  onDeleted,
+  onError,
+}) {
+  const [tab, setTab] = useState("info");
   const [newPass, setNewPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [qrData, setQrData] = useState(null);
@@ -229,13 +238,11 @@ function ModalDetallePadre({ padre, onClose, onUpdated, onDeleted, onError }) {
     if (!newPass) return;
     setLoading(true);
     try {
-      await api.put(`/padres/${padre.id}/reset-password`, {
-        password: newPass,
-      });
+      await resetPassword(padre.id, newPass);
       onUpdated();
       setNewPass("");
     } catch (e) {
-      onError(e.response?.data?.message ?? "Error");
+      onError(e.message ?? "Error");
     } finally {
       setLoading(false);
     }
@@ -247,18 +254,18 @@ function ModalDetallePadre({ padre, onClose, onUpdated, onDeleted, onError }) {
     )
       return;
     try {
-      await api.delete(`/padres/${padre.id}`);
+      await deletePadre(padre.id);
       onDeleted();
     } catch (e) {
-      onError(e.response?.data?.message ?? "Error al eliminar");
+      onError(e.message ?? "Error al eliminar");
     }
   };
 
   const loadQR = async () => {
     if (qrData) return;
     try {
-      const r = await api.get(`/padres/${padre.id}/qr`);
-      setQrData(r.data);
+      const data = await getQR(padre.id);
+      setQrData(data);
     } catch {
       onError("Error al cargar QR");
     }
@@ -266,7 +273,6 @@ function ModalDetallePadre({ padre, onClose, onUpdated, onDeleted, onError }) {
 
   return (
     <Modal titulo={padre.nombre} onClose={onClose}>
-      {/* Badge código */}
       <div className="flex items-center gap-2 mb-1">
         <span className="bg-amber-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full">
           {padre.codigo}
@@ -354,8 +360,7 @@ function ModalDetallePadre({ padre, onClose, onUpdated, onDeleted, onError }) {
   );
 }
 
-// ── QR simple (canvas sin deps) ───────────────────────────────────────────────
-import { useRef, useEffect } from "react";
+// ── QR canvas simple (sin dependencias externas) ──────────────────────────────
 function QRSimple({ data, size = 180 }) {
   const ref = useRef(null);
   useEffect(() => {
@@ -404,7 +409,7 @@ function QRSimple({ data, size = 180 }) {
   );
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Atoms ─────────────────────────────────────────────────────────────────────
 function Modal({ titulo, onClose, children }) {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">

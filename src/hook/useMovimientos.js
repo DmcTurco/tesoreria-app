@@ -30,7 +30,7 @@ export const useMovimientos = () => {
             if (fecha_inicio !== null) params.fecha_inicio = fecha_inicio;
             if (fecha_fin !== null) params.fecha_fin = fecha_fin;
 
-            const response = await api.get("/movimientosGlobal", { params });
+            const response = await api.get("/movimientos", { params });
             console.log(response);
 
             // El backend devuelve { data, total_ingresos, total_egresos, saldo }

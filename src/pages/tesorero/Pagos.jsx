@@ -1,7 +1,16 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, X, Loader2, Ban, AlertCircle } from "lucide-react";
+import {
+  Plus,
+  Search,
+  X,
+  Loader2,
+  Ban,
+  AlertCircle,
+  ChevronDown,
+} from "lucide-react";
 import { usePagos } from "../../hook/usePagos";
 import { usePadres } from "../../hook/usePadres";
+import useApi from "../../hook/useApi";
 import { PAGO_ESTADO, PAGO_ESTADO_LABEL } from "../../constants/estados";
 
 const PAGO_COLORS = {
@@ -18,7 +27,7 @@ export default function Pagos() {
 
   const {
     loading: loadingPagos,
-    error: errorPagos,
+    error,
     pagos,
     getPagos,
     createPago,
@@ -26,15 +35,10 @@ export default function Pagos() {
   } = usePagos();
   const { loading: loadingPadres, padres, getPadres } = usePadres();
 
-  const loading = loadingPagos || loadingPadres;
-
-  // Carga inicial
   useEffect(() => {
     getPagos();
     getPadres();
   }, []);
-
-  // Recarga pagos cuando cambia el filtro de estado
   useEffect(() => {
     getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
   }, [filtroEstado]);
@@ -55,28 +59,26 @@ export default function Pagos() {
     }
   };
 
+  const reload = () =>
+    getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
+
   const filtrados = pagos.filter((p) => {
-    const nombre = padres.find((pa) => pa.id === p.padre_id)?.nombre ?? "";
-    const matchSearch =
-      nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.concepto.toLowerCase().includes(search.toLowerCase());
-    const matchEstado =
-      filtroEstado === "" || p.estado === Number(filtroEstado);
-    return matchSearch && matchEstado;
+    if (!search) return true;
+    const padre = padres.find((pa) => pa.id === p.padre_id);
+    return (
+      padre?.nombre?.toLowerCase().includes(search.toLowerCase()) ||
+      p.concepto?.toLowerCase().includes(search.toLowerCase())
+    );
   });
 
   return (
     <div className="flex flex-col gap-5">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-black text-stone-800">Pagos</h1>
-          <p className="text-sm text-stone-400">
-            {pagos.filter((p) => p.estado === PAGO_ESTADO.PAGADO).length}{" "}
-            cobrados
-          </p>
+          <p className="text-sm text-stone-400">Registro de cobros y cuotas</p>
         </div>
         <button
           onClick={() => setModal(true)}
@@ -86,43 +88,37 @@ export default function Pagos() {
         </button>
       </div>
 
-      {/* Error */}
-      {errorPagos && (
-        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
-          <AlertCircle size={16} className="text-red-400 shrink-0" />
-          <p className="text-sm text-red-500 font-medium">{errorPagos}</p>
-        </div>
-      )}
+      {error && <ErrorBanner msg={error} />}
 
-      {/* Filtros */}
+      {/* Buscador + filtro */}
       <div className="flex gap-2">
         <div className="relative flex-1">
           <Search
-            size={15}
+            size={14}
             className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
           />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nombre o concepto..."
-            className="w-full h-10 pl-8 pr-3 bg-white border border-stone-200 rounded-xl text-sm outline-none focus:border-amber-400 transition-colors"
+            placeholder="Buscar por padre o concepto..."
+            className="w-full h-9 pl-8 pr-3 bg-white border border-stone-200 rounded-xl text-xs text-stone-700 outline-none focus:border-amber-400"
           />
         </div>
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
-          className="h-10 px-3 bg-white border border-stone-200 rounded-xl text-sm text-stone-600 outline-none focus:border-amber-400"
+          className="h-9 px-3 bg-white border border-stone-200 rounded-xl text-xs text-stone-600 outline-none focus:border-amber-400"
         >
           <option value="">Todos</option>
-          <option value="0">Pendiente</option>
-          <option value="1">Pagado</option>
-          <option value="2">Anulado</option>
+          <option value="0">Pendientes</option>
+          <option value="1">Pagados</option>
+          <option value="2">Anulados</option>
         </select>
       </div>
 
       {/* Lista */}
-      <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-        {loading ? (
+      <div className="bg-white rounded-2xl border border-stone-100">
+        {loadingPagos || loadingPadres ? (
           <div className="flex justify-center py-10">
             <Loader2 size={24} className="text-amber-400 animate-spin" />
           </div>
@@ -147,15 +143,15 @@ export default function Pagos() {
                   <span className="text-sm font-bold text-stone-700 shrink-0">
                     S/ {Number(p.monto).toFixed(2)}
                   </span>
-                  <EstadoBadge
-                    estado={p.estado}
-                    map={PAGO_ESTADO_LABEL}
-                    colors={PAGO_COLORS}
-                  />
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${PAGO_COLORS[p.estado]}`}
+                  >
+                    {PAGO_ESTADO_LABEL[p.estado]}
+                  </span>
                   {p.estado === PAGO_ESTADO.PAGADO && (
                     <button
                       onClick={() => handleAnular(p.id)}
-                      className="text-stone-300 hover:text-red-400 transition-colors ml-1"
+                      className="text-stone-300 hover:text-red-400 transition-colors"
                     >
                       <Ban size={15} />
                     </button>
@@ -175,9 +171,7 @@ export default function Pagos() {
           onSaved={() => {
             setModal(false);
             showToast("Pago registrado");
-            getPagos({
-              estado: filtroEstado !== "" ? Number(filtroEstado) : null,
-            });
+            reload();
           }}
           onError={(msg) => showToast(msg, "err")}
         />
@@ -186,129 +180,262 @@ export default function Pagos() {
   );
 }
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+// ── Modal registrar pago ──────────────────────────────────────────────────────
 function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
-  const [form, setForm] = useState({
-    padre_id: "",
-    concepto: "",
-    monto: "",
-    fecha: today(),
-  });
+  const [padreId, setPadreId] = useState("");
+  const [concepto, setConcepto] = useState("");
+  const [monto, setMonto] = useState("");
+  const [fecha, setFecha] = useState(today());
+  const [pendientes, setPendientes] = useState([]); // cobros + multas del padre
+  const [loadingPend, setLoadingPend] = useState(false);
+  const [itemSel, setItemSel] = useState(null); // item seleccionado
   const [loading, setLoading] = useState(false);
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const api = useApi();
+
+  // Cuando cambia el padre, cargar sus pendientes
+  useEffect(() => {
+    if (!padreId) {
+      setPendientes([]);
+      setItemSel(null);
+      setConcepto("");
+      setMonto("");
+      return;
+    }
+    setLoadingPend(true);
+    api
+      .get("/mi-estado-tesorero", { params: { padre_id: padreId } })
+      .then((r) => {
+        const items = [];
+
+        // Multas pendientes
+        (r.multas ?? [])
+          .filter((m) => m.estado === 0)
+          .forEach((m) => {
+            items.push({
+              tipo: "multa",
+              id: m.id,
+              label: `Multa: ${m.concepto}`,
+              monto: Number(m.monto),
+              ref_id: m.id,
+            });
+          });
+
+        // Cobros pendientes (eventos tipo 3)
+        (r.cobros ?? [])
+          .filter((ep) => ep.estado === 0)
+          .forEach((ep) => {
+            items.push({
+              tipo: "cobro",
+              id: `cobro-${ep.id}`,
+              label: `Cobro: ${ep.evento?.titulo ?? "—"}`,
+              monto: Number(ep.evento?.multa_monto ?? 0),
+              ref_id: ep.id,
+            });
+          });
+
+        setPendientes(items);
+      })
+      .catch(() => setPendientes([]))
+      .finally(() => setLoadingPend(false));
+  }, [padreId]);
+
+  const handleSelItem = (item) => {
+    if (itemSel?.id === item.id) {
+      // Deseleccionar
+      setItemSel(null);
+      setConcepto("");
+      setMonto("");
+    } else {
+      setItemSel(item);
+      setConcepto(item.label);
+      setMonto(String(item.monto));
+    }
+  };
 
   const handleSave = async () => {
-    if (!form.padre_id || !form.concepto || !form.monto) {
+    if (!padreId || !concepto || !monto) {
       onError("Completa todos los campos");
       return;
     }
     setLoading(true);
     try {
-      await createPago(form);
+      // 1. Registrar el pago
+      await createPago({
+        padre_id: Number(padreId),
+        concepto,
+        monto: Number(monto),
+        fecha,
+      });
+
+      // 2. Si es multa → marcarla como pagada
+      if (itemSel?.tipo === "multa") {
+        await api.post(`/multas/${itemSel.ref_id}/pagar`);
+      }
+
+      // 3. Si es cobro → marcar evento_padre como pagado (estado 1 = presente/pagado)
+      if (itemSel?.tipo === "cobro") {
+        await api.put(`/evento-padres/${itemSel.ref_id}/pagar`);
+      }
+
       onSaved();
     } catch (e) {
-      onError(e.message ?? "Error");
+      onError(e.message ?? "Error al registrar");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Modal titulo="Registrar pago" onClose={onClose}>
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-bold text-stone-600">
-          Padre / Madre
-        </label>
-        <select
-          value={form.padre_id}
-          onChange={set("padre_id")}
-          className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
-        >
-          <option value="">Seleccionar...</option>
-          {padres.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.nombre} — {p.hijo}
-            </option>
-          ))}
-        </select>
-      </div>
-      <Field
-        label="Concepto"
-        value={form.concepto}
-        onChange={set("concepto")}
-        placeholder="Ej: Mantenimiento 2025"
-      />
-      <Field
-        label="Monto (S/)"
-        type="number"
-        value={form.monto}
-        onChange={set("monto")}
-        placeholder="50.00"
-      />
-      <Field
-        label="Fecha"
-        type="date"
-        value={form.fecha}
-        onChange={set("fecha")}
-      />
-      <BtnPrimary onClick={handleSave} loading={loading}>
-        Guardar pago
-      </BtnPrimary>
-    </Modal>
-  );
-}
-
-// ── Atoms ─────────────────────────────────────────────────────────────────────
-function EstadoBadge({ estado, map, colors }) {
-  return (
-    <span
-      className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${colors[estado] ?? "bg-stone-100 text-stone-500"}`}
-    >
-      {map[estado] ?? "—"}
-    </span>
-  );
-}
-
-function Modal({ titulo, onClose, children }) {
-  return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
       <div className="bg-white w-full max-w-md rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white">
-          <p className="font-black text-stone-800 text-sm">{titulo}</p>
+          <p className="font-black text-stone-800 text-sm">Registrar pago</p>
           <button onClick={onClose}>
             <X size={18} className="text-stone-400 hover:text-stone-600" />
           </button>
         </div>
-        <div className="p-5 flex flex-col gap-3">{children}</div>
+
+        <div className="p-5 flex flex-col gap-4">
+          {/* 1. Seleccionar padre */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-stone-600">
+              Padre / Madre
+            </label>
+            <select
+              value={padreId}
+              onChange={(e) => setPadreId(e.target.value)}
+              className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
+            >
+              <option value="">Seleccionar...</option>
+              {padres.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nombre} — {p.hijo}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* 2. Pendientes del padre */}
+          {padreId && (
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-stone-600">
+                ¿Por qué concepto?{" "}
+                <span className="font-normal text-stone-400">(opcional)</span>
+              </label>
+
+              {loadingPend ? (
+                <div className="flex justify-center py-3">
+                  <Loader2 size={18} className="text-amber-400 animate-spin" />
+                </div>
+              ) : pendientes.length === 0 ? (
+                <p className="text-xs text-stone-400 bg-stone-50 rounded-xl px-3 py-2.5">
+                  Este padre no tiene cobros ni multas pendientes
+                </p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {pendientes.map((item) => (
+                    <button
+                      key={item.id}
+                      onClick={() => handleSelItem(item)}
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all
+                        ${
+                          itemSel?.id === item.id
+                            ? "border-amber-400 bg-amber-50"
+                            : "border-stone-200 bg-stone-50 hover:border-amber-200"
+                        }`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full shrink-0
+                        ${item.tipo === "multa" ? "bg-red-400" : "bg-orange-400"}`}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-stone-700 truncate">
+                          {item.label}
+                        </p>
+                        <p className="text-[10px] text-stone-400">
+                          {item.tipo === "multa"
+                            ? "Multa por ausencia"
+                            : "Cobro de evento"}
+                        </p>
+                      </div>
+                      <span className="text-sm font-black text-stone-700 shrink-0">
+                        S/ {item.monto.toFixed(2)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. Concepto y monto — se llenan auto o manual */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-bold text-stone-600">Concepto</label>
+            <input
+              value={concepto}
+              onChange={(e) => setConcepto(e.target.value)}
+              placeholder="Ej: Mantenimiento aula 2025"
+              className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-stone-600">
+                Monto (S/)
+              </label>
+              <input
+                type="number"
+                value={monto}
+                onChange={(e) => setMonto(e.target.value)}
+                placeholder="0.00"
+                className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-stone-600">Fecha</label>
+              <input
+                type="date"
+                value={fecha}
+                onChange={(e) => setFecha(e.target.value)}
+                className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
+              />
+            </div>
+          </div>
+
+          {itemSel && (
+            <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5">
+              <p className="text-xs text-amber-700 font-semibold">
+                ✓ Al guardar también se marcará como <strong>pagado</strong> el
+                concepto seleccionado
+              </p>
+            </div>
+          )}
+
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+          >
+            {loading ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              "Guardar pago"
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text" }) {
+// ── Atoms ─────────────────────────────────────────────────────────────────────
+function ErrorBanner({ msg }) {
   return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold text-stone-600">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
-      />
+    <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+      <AlertCircle size={16} className="text-red-400 shrink-0" />
+      <p className="text-sm text-red-500 font-medium">{msg}</p>
     </div>
-  );
-}
-
-function BtnPrimary({ children, onClick, loading }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 mt-1"
-    >
-      {loading ? <Loader2 size={16} className="animate-spin" /> : children}
-    </button>
   );
 }
 

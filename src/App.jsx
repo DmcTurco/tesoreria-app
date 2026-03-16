@@ -3,6 +3,7 @@ import RoleSelector from "./pages/RoleSelector";
 import Login from "./pages/Login";
 import DashboardTesorero from "./pages/tesorero/DashboardTesorero";
 import DashboardProfesora from "./pages/profesora/DashboardProfesora";
+import DashboardPadre from "./pages/padre/DashboardPadre";
 
 function App() {
   return (
@@ -13,6 +14,7 @@ function App() {
         <Route path="login" element={<Login />} />
         <Route path="dashboard" element={<DashboardTesorero />} />
         <Route path="profesora" element={<DashboardProfesora />} />
+        <Route path="padre" element={<DashboardPadre />} />
         {/* próximas rutas */}
       </Routes>
     </BrowserRouter>

@@ -27,8 +27,8 @@ export const useMultas = () => {
 
             const response = await api.get("/multas", { params });
 
-            setMultas(response.data ?? []);
-            return response.data;
+            setMultas(response ?? []);
+            return response;
 
         } catch (err) {
             console.error("❌ Error en getMultas:", err);

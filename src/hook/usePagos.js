@@ -29,8 +29,8 @@ export const usePagos = () => {
 
             const response = await api.get("/pagos", { params });
 
-            setPagos(response.data ?? []);
-            return response.data;
+            setPagos(response ?? []);
+            return response;
 
         } catch (err) {
             console.error("❌ Error en getPagos:", err);

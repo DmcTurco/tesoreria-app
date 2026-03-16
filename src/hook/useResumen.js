@@ -18,9 +18,8 @@ export const useResumen = () => {
             setError(null);
 
             const response = await api.get("/reportes/dashboard");
-
-            setResumen(response.data ?? null);
-            return response.data;
+            setResumen(response ?? null);
+            return response;
 
         } catch (err) {
             console.error("❌ Error en getResumen:", err);

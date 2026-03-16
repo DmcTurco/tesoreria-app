@@ -7,9 +7,12 @@ import {
   X,
   CheckSquare,
   AlertCircle,
+  Users,
 } from "lucide-react";
 import { useEventos } from "../../hook/useEventos";
+import { usePadres } from "../../hook/usePadres";
 import { EVENTO_TIPO_LABEL, EVENTO_ESTADO } from "../../constants/estados";
+import useApi from "../../hook/useApi";
 
 const TIPO_COLORS = {
   0: "bg-amber-50 text-amber-700",
@@ -21,6 +24,7 @@ const TIPO_COLORS = {
 
 export default function Eventos() {
   const [modal, setModal] = useState(null); // "nuevo" | evento_obj
+  const [asignar, setAsignar] = useState(null); // evento para asignar padres
   const [toast, setToast] = useState(null);
 
   const { loading, error, eventos, getEventos, createEvento, cerrarEvento } =
@@ -136,6 +140,20 @@ export default function Eventos() {
                       />
                     </button>
                   )}
+                  {/* Asignar padres — solo faena, reunion y actividad */}
+                  {[1, 2, 4].includes(e.tipo) &&
+                    e.estado === EVENTO_ESTADO.ACTIVO && (
+                      <button
+                        onClick={() => setAsignar(e)}
+                        className="w-8 h-8 rounded-full bg-stone-50 hover:bg-blue-50 flex items-center justify-center transition-colors"
+                        title="Asignar padres"
+                      >
+                        <Users
+                          size={15}
+                          className="text-stone-400 hover:text-blue-500"
+                        />
+                      </button>
+                    )}
                   <button
                     onClick={() => setModal(e)}
                     className="w-8 h-8 rounded-full bg-stone-50 hover:bg-stone-100 flex items-center justify-center transition-colors"
@@ -159,6 +177,14 @@ export default function Eventos() {
             getEventos();
           }}
           onError={(msg) => showToast(msg, "err")}
+        />
+      )}
+
+      {asignar && (
+        <ModalAsignarPadres
+          evento={asignar}
+          onClose={() => setAsignar(null)}
+          onToast={showToast}
         />
       )}
     </div>
@@ -374,6 +400,194 @@ function Toast({ msg, type }) {
       ${type === "err" ? "bg-red-500 text-white" : "bg-stone-800 text-white"}`}
     >
       {msg}
+    </div>
+  );
+}
+
+// ── Modal asignar padres ──────────────────────────────────────────────────────
+function ModalAsignarPadres({ evento, onClose, onToast }) {
+  const [asignados, setAsignados] = useState([]); // ids ya asignados
+  const [seleccionados, setSeleccionados] = useState(new Set());
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const { padres, getPadres } = usePadres();
+  const api = useApi();
+
+  useEffect(() => {
+    Promise.all([getPadres(), api.get(`/eventos/${evento.id}/padres`)])
+      .then(([_, eps]) => {
+        const ids = new Set(
+          (Array.isArray(eps) ? eps : []).map((ep) => ep.padre_id),
+        );
+        setAsignados(ids);
+        setSeleccionados(new Set(ids)); // pre-seleccionar los ya asignados
+      })
+      .catch(() => onToast("Error al cargar padres", "err"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const toggle = (id) => {
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const handleGuardar = async () => {
+    setSaving(true);
+    try {
+      // Agregar los nuevos (los que no estaban antes)
+      const nuevos = [...seleccionados].filter((id) => !asignados.has(id));
+      await Promise.all(
+        nuevos.map((padreId) =>
+          api.post(`/eventos/${evento.id}/agregar-padre`, {
+            padre_id: padreId,
+          }),
+        ),
+      );
+      onToast(`${nuevos.length} padre(s) asignado(s)`);
+      onClose();
+    } catch (e) {
+      onToast(e.message ?? "Error al asignar", "err");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const filtrados = padres.filter(
+    (p) =>
+      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
+      p.hijo?.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 shrink-0">
+          <div>
+            <p className="font-black text-stone-800 text-sm">Asignar padres</p>
+            <p className="text-xs text-stone-400 truncate">{evento.titulo}</p>
+          </div>
+          <button onClick={onClose}>
+            <X size={18} className="text-stone-400 hover:text-stone-600" />
+          </button>
+        </div>
+
+        {/* Buscador */}
+        <div className="px-4 py-3 border-b border-stone-50 shrink-0">
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
+              </svg>
+            </span>
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar padre o alumno..."
+              className="w-full h-9 pl-8 pr-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+          <p className="text-xs text-stone-400 mt-1.5">
+            {seleccionados.size} seleccionado(s)
+          </p>
+        </div>
+
+        {/* Lista */}
+        <div className="flex-1 overflow-y-auto divide-y divide-stone-50">
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 size={22} className="text-amber-400 animate-spin" />
+            </div>
+          ) : filtrados.length === 0 ? (
+            <p className="text-center text-stone-400 text-sm py-8">
+              Sin resultados
+            </p>
+          ) : (
+            filtrados.map((p) => {
+              const checked = seleccionados.has(p.id);
+              const yaEra = asignados.has(p.id);
+              return (
+                <div
+                  key={p.id}
+                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors
+                  ${checked ? "bg-amber-50" : "hover:bg-stone-50"}`}
+                  onClick={() => !yaEra && toggle(p.id)}
+                >
+                  <div
+                    className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all
+                  ${checked ? "bg-amber-500 border-amber-500" : "border-stone-300"}`}
+                  >
+                    {checked && (
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="white"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="w-9 h-9 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                    <span className="text-xs font-black text-amber-700">
+                      {p.nombre
+                        .split(" ")
+                        .slice(0, 2)
+                        .map((w) => w[0])
+                        .join("")}
+                    </span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-stone-700 truncate">
+                      {p.nombre}
+                    </p>
+                    <p className="text-xs text-stone-400">
+                      {p.hijo} · {p.grado}
+                    </p>
+                  </div>
+                  {yaEra && (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 shrink-0">
+                      Asignado
+                    </span>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="px-5 py-4 border-t border-stone-100 shrink-0">
+          <button
+            onClick={handleGuardar}
+            disabled={saving}
+            className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+          >
+            {saving ? (
+              <Loader2 size={16} className="animate-spin" />
+            ) : (
+              `Guardar asignación`
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

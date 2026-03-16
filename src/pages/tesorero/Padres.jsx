@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { usePadres } from "../../hook/usePadres";
+import useApi from "../../hook/useApi";
 
 export default function Padres() {
   const [search, setSearch] = useState("");
@@ -34,7 +35,7 @@ export default function Padres() {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 2800);
   };
-  console.log(padres);
+
   const filtrados = padres.filter(
     (p) =>
       p.nombre.toLowerCase().includes(search.toLowerCase()) ||
@@ -286,6 +287,7 @@ function ModalDetallePadre({
       <div className="flex bg-stone-100 rounded-xl p-1 gap-1 mb-4">
         {[
           ["info", "Datos"],
+          ["editar", "Editar"],
           ["pass", "Contraseña"],
           ["qr", "QR"],
         ].map(([k, l]) => (
@@ -317,6 +319,10 @@ function ModalDetallePadre({
             <Trash2 size={13} /> Eliminar padre
           </button>
         </div>
+      )}
+
+      {tab === "editar" && (
+        <TabEditar padre={padre} onUpdated={onUpdated} onError={onError} />
       )}
 
       {tab === "pass" && (
@@ -406,6 +412,67 @@ function QRSimple({ data, size = 180 }) {
       height={size}
       style={{ borderRadius: 8, display: "block" }}
     />
+  );
+}
+
+// ── Tab editar padre ──────────────────────────────────────────────────────────
+function TabEditar({ padre, onUpdated, onError }) {
+  const [form, setForm] = useState({
+    nombre: padre.nombre ?? "",
+    hijo: padre.hijo ?? "",
+    grado: padre.grado ?? "",
+    telefono: padre.telefono ?? "",
+  });
+  const [loading, setLoading] = useState(false);
+  const api = useApi();
+  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+
+  const handleSave = async () => {
+    if (!form.nombre || !form.hijo || !form.grado) {
+      onError("Nombre, alumno/a y grado son obligatorios");
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.put(`/padres/${padre.id}`, form);
+      onUpdated();
+    } catch (e) {
+      onError(e.message ?? "Error al actualizar");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <Field
+        label="Nombre completo *"
+        value={form.nombre}
+        onChange={set("nombre")}
+        placeholder="María García López"
+      />
+      <Field
+        label="Nombre del alumno/a *"
+        value={form.hijo}
+        onChange={set("hijo")}
+        placeholder="Carlos García"
+      />
+      <Field
+        label="Grado y sección *"
+        value={form.grado}
+        onChange={set("grado")}
+        placeholder="3° A"
+      />
+      <Field
+        label="Teléfono"
+        value={form.telefono}
+        onChange={set("telefono")}
+        placeholder="987654321"
+      />
+      <BtnPrimary onClick={handleSave} loading={loading}>
+        Guardar cambios
+      </BtnPrimary>
+    </div>
   );
 }
 

@@ -34,10 +34,10 @@ export const useMovimientos = () => {
             console.log(response);
 
             // El backend devuelve { data, total_ingresos, total_egresos, saldo }
-            setMovimientos(response.data?.data ?? []);
-            setTotalIngresos(response.data?.total_ingresos ?? 0);
-            setTotalEgresos(response.data?.total_egresos ?? 0);
-            setSaldo(response.data?.saldo ?? 0);
+            setMovimientos(response.data ?? []);
+            setTotalIngresos(response.total_ingresos ?? 0);
+            setTotalEgresos(response.total_egresos ?? 0);
+            setSaldo(response.saldo ?? 0);
 
             return response.data;
 

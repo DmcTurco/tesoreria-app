@@ -1,17 +1,12 @@
 import { useEffect, useState } from "react";
-import {
-  Plus,
-  Search,
-  X,
-  Loader2,
-  Ban,
-  AlertCircle,
-  ChevronDown,
-} from "lucide-react";
+import { Plus, Search, X, Loader2, Ban, AlertCircle } from "lucide-react";
 import { usePagos } from "../../hook/usePagos";
 import { usePadres } from "../../hook/usePadres";
 import useApi from "../../hook/useApi";
 import { PAGO_ESTADO, PAGO_ESTADO_LABEL } from "../../constants/estados";
+import ModalAnulacion from "./../../constants/ModalAnulacion"; // ← importar modal
+import PadreBuscador from "../../constants/PadreBuscador";
+import ModalAbono from "../../constants/ModalAbono";
 
 const PAGO_COLORS = {
   0: "bg-yellow-50 text-yellow-700",
@@ -22,8 +17,10 @@ const PAGO_COLORS = {
 export default function Pagos() {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
+  <div className="flex flex-col gap-1.5"></div>;
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState(null);
+  const [pagoAAnular, setPagoAAnular] = useState(null); // ← nuevo estado
 
   const {
     loading: loadingPagos,
@@ -31,7 +28,6 @@ export default function Pagos() {
     pagos,
     getPagos,
     createPago,
-    anularPago,
   } = usePagos();
   const { loading: loadingPadres, padres, getPadres } = usePadres();
 
@@ -39,6 +35,7 @@ export default function Pagos() {
     getPagos();
     getPadres();
   }, []);
+
   useEffect(() => {
     getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
   }, [filtroEstado]);
@@ -48,19 +45,17 @@ export default function Pagos() {
     setTimeout(() => setToast(null), 2800);
   };
 
-  const handleAnular = async (id) => {
-    if (!confirm("¿Anular este pago?")) return;
-    try {
-      await anularPago(id);
-      showToast("Pago anulado");
-      getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
-    } catch (e) {
-      showToast(e.message ?? "Error", "err");
-    }
-  };
-
   const reload = () =>
     getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
+
+  // ← Ahora solo abre el modal con los datos del pago + nombre del padre
+  const handleAnular = (p) => {
+    const padre = padres.find((pa) => pa.id === p.padre_id);
+    setPagoAAnular({
+      ...p,
+      padre_nombre: padre?.nombre ?? "—",
+    });
+  };
 
   const filtrados = pagos.filter((p) => {
     if (!search) return true;
@@ -150,8 +145,9 @@ export default function Pagos() {
                   </span>
                   {p.estado === PAGO_ESTADO.PAGADO && (
                     <button
-                      onClick={() => handleAnular(p.id)}
+                      onClick={() => handleAnular(p)} // ← pasa el objeto completo
                       className="text-stone-300 hover:text-red-400 transition-colors"
+                      title="Anular pago"
                     >
                       <Ban size={15} />
                     </button>
@@ -163,19 +159,38 @@ export default function Pagos() {
         )}
       </div>
 
+      {/* Modal registrar pago */}
       {modal && (
-        <ModalNuevoPago
-          padres={padres}
-          createPago={createPago}
+        <ModalAbono
           onClose={() => setModal(false)}
-          onSaved={() => {
-            setModal(false);
-            showToast("Pago registrado");
+          onSuccess={(msg) => {
+            showToast(msg);
             reload();
           }}
           onError={(msg) => showToast(msg, "err")}
         />
+        // <ModalNuevoPago
+        //   padres={padres}
+        //   createPago={createPago}
+        //   onClose={() => setModal(false)}
+        //   onSaved={() => {
+        //     setModal(false);
+        //     showToast("Pago registrado");
+        //     reload();
+        //   }}
+        //   onError={(msg) => showToast(msg, "err")}
+        // />
       )}
+
+      {/* Modal anular pago */}
+      <ModalAnulacion
+        pago={pagoAAnular}
+        onClose={() => setPagoAAnular(null)}
+        onSuccess={(msg) => {
+          showToast(msg);
+          reload();
+        }}
+      />
     </div>
   );
 }
@@ -186,13 +201,12 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
   const [concepto, setConcepto] = useState("");
   const [monto, setMonto] = useState("");
   const [fecha, setFecha] = useState(today());
-  const [pendientes, setPendientes] = useState([]); // cobros + multas del padre
+  const [pendientes, setPendientes] = useState([]);
   const [loadingPend, setLoadingPend] = useState(false);
-  const [itemSel, setItemSel] = useState(null); // item seleccionado
+  const [itemSel, setItemSel] = useState(null);
   const [loading, setLoading] = useState(false);
   const api = useApi();
 
-  // Cuando cambia el padre, cargar sus pendientes
   useEffect(() => {
     if (!padreId) {
       setPendientes([]);
@@ -206,8 +220,6 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
       .get("/mi-estado-tesorero", { params: { padre_id: padreId } })
       .then((r) => {
         const items = [];
-
-        // Multas pendientes
         (r.multas ?? [])
           .filter((m) => m.estado === 0)
           .forEach((m) => {
@@ -219,8 +231,6 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
               ref_id: m.id,
             });
           });
-
-        // Cobros pendientes (eventos tipo 3)
         (r.cobros ?? [])
           .filter((ep) => ep.estado === 0)
           .forEach((ep) => {
@@ -232,7 +242,6 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
               ref_id: ep.id,
             });
           });
-
         setPendientes(items);
       })
       .catch(() => setPendientes([]))
@@ -241,7 +250,6 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
 
   const handleSelItem = (item) => {
     if (itemSel?.id === item.id) {
-      // Deseleccionar
       setItemSel(null);
       setConcepto("");
       setMonto("");
@@ -259,24 +267,18 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
     }
     setLoading(true);
     try {
-      // 1. Registrar el pago
       await createPago({
         padre_id: Number(padreId),
         concepto,
         monto: Number(monto),
         fecha,
       });
-
-      // 2. Si es multa → marcarla como pagada
       if (itemSel?.tipo === "multa") {
         await api.post(`/multas/${itemSel.ref_id}/pagar`);
       }
-
-      // 3. Si es cobro → marcar evento_padre como pagado (estado 1 = presente/pagado)
       if (itemSel?.tipo === "cobro") {
         await api.put(`/evento-padres/${itemSel.ref_id}/pagar`);
       }
-
       onSaved();
     } catch (e) {
       onError(e.message ?? "Error al registrar");
@@ -297,23 +299,10 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
 
         <div className="p-5 flex flex-col gap-4">
           {/* 1. Seleccionar padre */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-bold text-stone-600">
-              Padre / Madre
-            </label>
-            <select
-              value={padreId}
-              onChange={(e) => setPadreId(e.target.value)}
-              className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
-            >
-              <option value="">Seleccionar...</option>
-              {padres.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nombre} — {p.hijo}
-                </option>
-              ))}
-            </select>
-          </div>
+          <PadreBuscador
+            value={padreId}
+            onChange={(id) => setPadreId(id ? String(id) : "")}
+          />
 
           {/* 2. Pendientes del padre */}
           {padreId && (
@@ -322,7 +311,6 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
                 ¿Por qué concepto?{" "}
                 <span className="font-normal text-stone-400">(opcional)</span>
               </label>
-
               {loadingPend ? (
                 <div className="flex justify-center py-3">
                   <Loader2 size={18} className="text-amber-400 animate-spin" />
@@ -368,7 +356,7 @@ function ModalNuevoPago({ padres, createPago, onClose, onSaved, onError }) {
             </div>
           )}
 
-          {/* 3. Concepto y monto — se llenan auto o manual */}
+          {/* 3. Concepto y monto */}
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-bold text-stone-600">Concepto</label>
             <input

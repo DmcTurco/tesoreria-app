@@ -1,43 +1,45 @@
 import { useEffect, useState } from "react";
-import { Plus, Search, X, Loader2, Ban, AlertCircle } from "lucide-react";
-import { usePagos } from "../../hook/usePagos";
+import { Plus, Search, Ban, Loader2, AlertCircle } from "lucide-react";
+import { useAbono } from "../../hook/useAbono";
 import { usePadres } from "../../hook/usePadres";
-import useApi from "../../hook/useApi";
-import { PAGO_ESTADO, PAGO_ESTADO_LABEL } from "../../constants/estados";
-import ModalAnulacion from "./../../constants/ModalAnulacion"; // ← importar modal
+import ModalAnulacion from "./../../constants/ModalAnulacion";
 import ModalAbono from "../../constants/ModalAbono";
-import {formatFecha, Toast} from  "./../../utils/utility";
+import { formatFecha, Toast } from "./../../utils/utility";
 
-const PAGO_COLORS = {
-  0: "bg-yellow-50 text-yellow-700",
-  1: "bg-emerald-50 text-emerald-700",
-  2: "bg-stone-100 text-stone-500",
+const TIPO_COLORS = {
+  multa: "bg-red-50 text-red-600",
+  cobro: "bg-blue-50 text-blue-600",
+};
+
+const ESTADO_COLORS = {
+  0: "bg-emerald-50 text-emerald-700", // activo
+  1: "bg-stone-100 text-stone-400", // anulado
+};
+
+const ESTADO_LABELS = {
+  0: "Activo",
+  1: "Anulado",
 };
 
 export default function Pagos() {
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
-  <div className="flex flex-col gap-1.5"></div>;
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState(null);
-  const [pagoAAnular, setPagoAAnular] = useState(null); // ← nuevo estado
+  const [abonoAAnular, setAbonoAAnular] = useState(null);
 
-  const {
-    loading: loadingPagos,
-    error,
-    pagos,
-    getPagos,
-    createPago,
-  } = usePagos();
+  const { loading, error, abonos, getAbonos, anularAbono } = useAbono();
   const { loading: loadingPadres, padres, getPadres } = usePadres();
 
   useEffect(() => {
-    getPagos();
+    getAbonos();
     getPadres();
   }, []);
 
   useEffect(() => {
-    getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
+    getAbonos({
+      estado: filtroEstado !== "" ? Number(filtroEstado) : null,
+    });
   }, [filtroEstado]);
 
   const showToast = (msg, type = "ok") => {
@@ -45,23 +47,20 @@ export default function Pagos() {
     setTimeout(() => setToast(null), 2800);
   };
 
-  const reload = () => getPagos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
+  const reload = () =>
+    getAbonos({ estado: filtroEstado !== "" ? Number(filtroEstado) : null });
 
-  // ← Ahora solo abre el modal con los datos del pago + nombre del padre
-  const handleAnular = (p) => {
-    const padre = padres.find((pa) => pa.id === p.padre_id);
-    setPagoAAnular({
-      ...p,
-      padre_nombre: padre?.nombre ?? "—",
-    });
+  const handleAnular = (abono) => {
+    const padre = padres.find((p) => p.id === abono.padre_id);
+    setAbonoAAnular({ ...abono, padre_nombre: padre?.nombre ?? "—" });
   };
 
-  const filtrados = pagos.filter((p) => {
+  const filtrados = abonos.filter((a) => {
     if (!search) return true;
-    const padre = padres.find((pa) => pa.id === p.padre_id);
+    const padre = padres.find((p) => p.id === a.padre_id);
     return (
       padre?.nombre?.toLowerCase().includes(search.toLowerCase()) ||
-      p.concepto?.toLowerCase().includes(search.toLowerCase())
+      a.tipo_deuda?.toLowerCase().includes(search.toLowerCase())
     );
   });
 
@@ -71,8 +70,10 @@ export default function Pagos() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-black text-stone-800">Pagos</h1>
-          <p className="text-sm text-stone-400">Registro de cobros y cuotas</p>
+          <h1 className="text-xl font-black text-stone-800">Abonos</h1>
+          <p className="text-sm text-stone-400">
+            Registro de cobros realizados
+          </p>
         </div>
         <button
           onClick={() => setModal(true)}
@@ -94,7 +95,7 @@ export default function Pagos() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por padre o concepto..."
+            placeholder="Buscar por padre o tipo..."
             className="w-full h-9 pl-8 pr-3 bg-white border border-stone-200 rounded-xl text-xs text-stone-700 outline-none focus:border-amber-400"
           />
         </div>
@@ -104,15 +105,14 @@ export default function Pagos() {
           className="h-9 px-3 bg-white border border-stone-200 rounded-xl text-xs text-stone-600 outline-none focus:border-amber-400"
         >
           <option value="">Todos</option>
-          <option value="0">Pendientes</option>
-          <option value="1">Pagados</option>
-          <option value="2">Anulados</option>
+          <option value="0">Activos</option>
+          <option value="1">Anulados</option>
         </select>
       </div>
 
       {/* Lista */}
       <div className="bg-white rounded-2xl border border-stone-100">
-        {loadingPagos || loadingPadres ? (
+        {loading || loadingPadres ? (
           <div className="flex justify-center py-10">
             <Loader2 size={24} className="text-amber-400 animate-spin" />
           </div>
@@ -122,31 +122,39 @@ export default function Pagos() {
           </p>
         ) : (
           <div className="divide-y divide-stone-50">
-            {filtrados.map((p) => {
-              const padre = padres.find((pa) => pa.id === p.padre_id);
+            {filtrados.map((a) => {
+              const padre = padres.find((p) => p.id === a.padre_id);
               return (
-                <div key={p.id} className="flex items-center gap-3 px-4 py-3">
+                <div key={a.id} className="flex items-center gap-3 px-4 py-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-stone-700 truncate">
-                      {padre?.nombre ?? "—"}
+                      {padre?.nombre ?? a.padre?.nombre ?? "—"}
                     </p>
                     <p className="text-xs text-stone-400 truncate">
-                      {p.concepto} · {formatFecha(p.fecha)}
+                      {formatFecha(a.fecha)}
                     </p>
                   </div>
                   <span className="text-sm font-bold text-stone-700 shrink-0">
-                    S/ {Number(p.monto).toFixed(2)}
+                    S/ {Number(a.monto).toFixed(2)}
                   </span>
+                  {/* Tipo de deuda */}
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${PAGO_COLORS[p.estado]}`}
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${TIPO_COLORS[a.tipo_deuda] ?? "bg-stone-100 text-stone-500"}`}
                   >
-                    {PAGO_ESTADO_LABEL[p.estado]}
+                    {a.tipo_deuda}
                   </span>
-                  {p.estado === PAGO_ESTADO.PAGADO && (
+                  {/* Estado */}
+                  <span
+                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${ESTADO_COLORS[a.estado]}`}
+                  >
+                    {ESTADO_LABELS[a.estado]}
+                  </span>
+                  {/* Anular solo si está activo */}
+                  {Number(a.estado) === 0 && (
                     <button
-                      onClick={() => handleAnular(p)} // ← pasa el objeto completo
+                      onClick={() => handleAnular(a)}
                       className="text-stone-300 hover:text-red-400 transition-colors"
-                      title="Anular pago"
+                      title="Anular abono"
                     >
                       <Ban size={15} />
                     </button>
@@ -158,7 +166,7 @@ export default function Pagos() {
         )}
       </div>
 
-      {/* Modal registrar pago */}
+      {/* Modal registrar abono */}
       {modal && (
         <ModalAbono
           onClose={() => setModal(false)}
@@ -170,10 +178,10 @@ export default function Pagos() {
         />
       )}
 
-      {/* Modal anular pago */}
+      {/* Modal anular abono */}
       <ModalAnulacion
-        pago={pagoAAnular}
-        onClose={() => setPagoAAnular(null)}
+        pago={abonoAAnular}
+        onClose={() => setAbonoAAnular(null)}
         onSuccess={(msg) => {
           showToast(msg);
           reload();
@@ -183,9 +191,6 @@ export default function Pagos() {
   );
 }
 
-
-
-// ── Atoms ─────────────────────────────────────────────────────────────────────
 function ErrorBanner({ msg }) {
   return (
     <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">

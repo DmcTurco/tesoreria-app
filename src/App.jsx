@@ -15,6 +15,16 @@ import Eventos      from "./pages/tesorero/Eventos";
 import Multas       from "./pages/tesorero/Multas";
 import Presupuesto  from "./pages/tesorero/Presupuesto";
 
+import TablaComparativa from "./components/TablaComparativa";
+
+// function App() {
+//   return (
+//     <div>
+//       <TablaComparativa />
+//     </div>
+//   );
+// }
+
 function App() {
   return (
     <BrowserRouter basename="/terminal/tesoreria/">

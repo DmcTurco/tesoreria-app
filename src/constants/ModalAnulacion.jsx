@@ -33,7 +33,7 @@ export default function ModalAnulacion({ pago, onClose, onSuccess }) {
     setError("");
 
     try {
-      const response = await api.post(`/pagos/${pago.id}/anular`, {
+      const response = await api.post(`/abonos/${pago.id}/anular`, {
         motivo: motivo.trim(),
         perdonar_deuda: decision === "perdonar",
       });
@@ -57,7 +57,7 @@ export default function ModalAnulacion({ pago, onClose, onSuccess }) {
               <AlertTriangle size={17} className="text-red-500" />
             </div>
             <div>
-              <p className="text-sm font-bold text-stone-800">Anular pago</p>
+              <p className="text-sm font-bold text-stone-800">Anular abono</p>
               <p className="text-xs text-stone-400">
                 Esta acción queda registrada en auditoría
               </p>
@@ -82,7 +82,7 @@ export default function ModalAnulacion({ pago, onClose, onSuccess }) {
                 {pago.padre_nombre}
               </p>
               <p className="text-xs text-stone-400">
-                {pago.concepto ?? "Pago general"}
+                {pago.tipo_deuda === "multa" ? "Multa" : "Cobro de evento"}
               </p>
             </div>
             <div className="text-right">

@@ -6,9 +6,50 @@ export const useAbono = () => {
     const [loading, setLoading] = useState(false);
     const [loadingPend, setLoadingPend] = useState(false);
     const [error, setError] = useState(null);
+    const [abonos, setAbonos] = useState([]);  // ← agregado
     const [pendientes, setPendientes] = useState([]);
 
     const api = useApi();
+
+    /**
+     * Listar abonos con filtros opcionales
+     * @param {number|null} padre_id
+     * @param {'multa'|'cobro'|null} tipo_deuda
+     * @param {number|null} estado       - 0 activo | 1 anulado
+     * @param {string|null} fecha_inicio - YYYY-MM-DD
+     * @param {string|null} fecha_fin    - YYYY-MM-DD
+     */
+    const getAbonos = useCallback(async ({  // ← agregado
+        padre_id = null,
+        tipo_deuda = null,
+        estado = null,
+        fecha_inicio = null,
+        fecha_fin = null,
+    } = {}) => {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const params = {};
+            if (padre_id !== null) params.padre_id = padre_id;
+            if (tipo_deuda !== null) params.tipo_deuda = tipo_deuda;
+            if (estado !== null) params.estado = estado;
+            if (fecha_inicio !== null) params.fecha_inicio = fecha_inicio;
+            if (fecha_fin !== null) params.fecha_fin = fecha_fin;
+
+            const response = await api.get("/abonos", { params });
+            setAbonos(response ?? []);
+            return response ?? [];
+
+        } catch (err) {
+            console.error("❌ Error en getAbonos:", err);
+            setError(err.message);
+            setAbonos([]);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, [api]);
 
     /**
      * Cargar deudas pendientes de un padre (multas + cobros)
@@ -27,8 +68,10 @@ export const useAbono = () => {
 
             const deudas = [];
 
-            // ── Multas pendientes o parciales ─────────────────────────────────────
-            for (const multa of (respuesta.multas ?? []).filter( (m) => m.estado === 0 || m.estado === 1 )) {
+            // ── Multas pendientes o parciales ─────────────────────────────────
+            for (const multa of (respuesta.multas ?? []).filter(
+                (m) => Number(m.estado) === 0 || Number(m.estado) === 1
+            )) {
                 const saldo = Number(multa.monto) - Number(multa.monto_pagado ?? 0);
                 if (saldo > 0) {
                     deudas.push({
@@ -42,8 +85,10 @@ export const useAbono = () => {
                 }
             }
 
-            // ── Cobros de eventos pendientes o parciales ──────────────────────────
-            for (const cobro of (respuesta.cobros ?? []).filter( (c) => c.estado === 0 || c.estado === 1 )) {
+            // ── Cobros de eventos pendientes o parciales ──────────────────────
+            for (const cobro of (respuesta.cobros ?? []).filter(
+                (c) => Number(c.estado) === 0 || Number(c.estado) === 1
+            )) {
                 const monto_total = Number(cobro.evento?.multa_monto ?? 0);
                 const monto_pagado = Number(cobro.monto_pagado ?? 0);
                 const saldo = monto_total - monto_pagado;
@@ -73,13 +118,12 @@ export const useAbono = () => {
     }, [api]);
 
     /**
-     * Registrar un abono a una deuda (multa o cobro)
-     * @param {Object} datos
+     * Registrar un abono a una deuda (multa | cobro)
      * @param {number} datos.padre_id
-     * @param {string} datos.tipo_deuda  - "multa" | "cobro" | "cuota"
+     * @param {'multa'|'cobro'} datos.tipo_deuda
      * @param {number} datos.deuda_id
      * @param {number} datos.monto
-     * @param {string} datos.fecha       - "YYYY-MM-DD"
+     * @param {string} datos.fecha - YYYY-MM-DD
      */
     const registrarAbono = useCallback(async ({ padre_id, tipo_deuda, deuda_id, monto, fecha }) => {
         try {
@@ -92,15 +136,7 @@ export const useAbono = () => {
             setLoading(true);
             setError(null);
 
-            const response = await api.post("/abonos", {
-                padre_id,
-                tipo_deuda,
-                deuda_id,
-                monto,
-                fecha,
-            });
-
-            return response;
+            return await api.post("/abonos", { padre_id, tipo_deuda, deuda_id, monto, fecha });
 
         } catch (err) {
             console.error("❌ Error en registrarAbono:", err);
@@ -113,8 +149,8 @@ export const useAbono = () => {
 
     /**
      * Anular un abono registrado
-     * @param {number} id
-     * @param {string} motivo
+     * @param {number}  id
+     * @param {string}  motivo
      * @param {boolean} perdonar_deuda
      */
     const anularAbono = useCallback(async (id, motivo, perdonar_deuda = false) => {
@@ -125,12 +161,7 @@ export const useAbono = () => {
             setLoading(true);
             setError(null);
 
-            const response = await api.post(`/abonos/${id}/anular`, {
-                motivo,
-                perdonar_deuda,
-            });
-
-            return response;
+            return await api.post(`/abonos/${id}/anular`, { motivo, perdonar_deuda });
 
         } catch (err) {
             console.error("❌ Error en anularAbono:", err);
@@ -145,7 +176,9 @@ export const useAbono = () => {
         loading,
         loadingPend,
         error,
+        abonos,         // ← agregado
         pendientes,
+        getAbonos,      // ← agregado
         getPendientes,
         registrarAbono,
         anularAbono,

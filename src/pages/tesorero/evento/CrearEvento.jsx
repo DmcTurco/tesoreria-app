@@ -35,8 +35,8 @@ const TIPOS = [
   },
   {
     value: "3",
-    label: "Cobro",
-    desc: "Cuota o pago general a todos",
+    label: "Cuota",                         // ← Cobro → Cuota
+    desc: "Cuota o aporte general a todos", // ← opcional, más claro
     color: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   {
@@ -536,7 +536,7 @@ function Paso2({
               <p
                 className={`text-sm font-black ${isCobro ? "text-emerald-800" : "text-blue-800"}`}
               >
-                {isCobro ? "Aplica a todos los padres" : "Convocatoria general"}
+                {isCobro ? "Cuota general — todos los padres" : "Convocatoria general"}
               </p>
               <p
                 className={`text-xs ${isCobro ? "text-emerald-600" : "text-blue-500"}`}

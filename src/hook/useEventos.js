@@ -69,7 +69,7 @@ export const useEventos = () => {
     /**
      * Cerrar un evento — marca ausentes y genera multas si tiene_multa = true
      * @param {number}      id
-     * @param {string|null} fecha - para guardias: día específico YYYY-MM-DD
+     * @param {string|null} fecha - no usado actualmente, reservado
      */
     const cerrarEvento = useCallback(async (id, fecha = null) => {
         try {

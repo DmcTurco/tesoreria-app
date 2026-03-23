@@ -133,7 +133,7 @@ export default function EventoCard({
           Ver detalle
         </button>
 
-        {activo && [1, 4].includes(e.tipo) && (
+        {activo && [0, 1, 4].includes(e.tipo) && (
           <button
             onClick={onAsignar}
             className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-semibold

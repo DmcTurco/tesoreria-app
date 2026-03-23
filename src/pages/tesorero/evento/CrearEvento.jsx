@@ -1,25 +1,15 @@
-import { useEffect, useState } from "react";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Loader2,
-  Users,
-  UserCheck,
-  UserX,
-  Search,
-  X,
-} from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, ArrowRight, Check, Loader2 } from "lucide-react";
 import { useEventos } from "@/hook/useEventos";
-import { usePadres } from "@/hook/usePadres";
 import { EVENTO_TIPO_LABEL } from "@/constants/estados";
+import { Field, today, Row, Toast } from "../../../utils/utility";
 
 const TIPOS = [
   {
     value: "0",
     label: "Guardia",
     desc: "Rotación de padres por fecha",
-    color: "bg-amber-50 text-amber-700   border-amber-200",
+    color: "bg-amber-50 text-amber-700 border-amber-200",
   },
   {
     value: "1",
@@ -31,12 +21,12 @@ const TIPOS = [
     value: "2",
     label: "Reunión",
     desc: "Aplica a todos los padres",
-    color: "bg-blue-50   text-blue-600   border-blue-200",
+    color: "bg-blue-50 text-blue-600 border-blue-200",
   },
   {
     value: "3",
-    label: "Cuota",                         // ← Cobro → Cuota
-    desc: "Cuota o aporte general a todos", // ← opcional, más claro
+    label: "Cuota",
+    desc: "Cuota o aporte general a todos",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200",
   },
   {
@@ -47,23 +37,10 @@ const TIPOS = [
   },
 ];
 
-// Qué modo de asignación aplica según tipo
-// "auto"   → todos los padres automático
-// "manual" → el tesorero elige
-// "ambos"  → puede elegir o todos
-const ASIGNACION = {
-  0: "manual",
-  1: "manual",
-  2: "auto",
-  3: "auto",
-  4: "ambos",
-};
-
 export default function CrearEvento({ onBack, onCreated }) {
   const [step, setStep] = useState(1);
   const [toast, setToast] = useState(null);
 
-  // ── Paso 1: datos básicos ──
   const [form, setForm] = useState({
     tipo: "0",
     titulo: "",
@@ -79,23 +56,12 @@ export default function CrearEvento({ onBack, onCreated }) {
     dias_semana: [1, 2, 3, 4, 5],
   });
 
-  // ── Paso 2: asignación ──
-  const [modoAsig, setModoAsig] = useState("manual"); // "manual" | "auto"
-  const [seleccionados, setSeleccionados] = useState(new Set());
-
   const { createEvento } = useEventos();
-  const { padres, getPadres, loading: loadingPadres } = usePadres();
-
-  useEffect(() => {
-    getPadres();
-  }, []);
 
   const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
   const tipo = form.tipo;
   const isGuardia = tipo === "0";
   const isCobro = tipo === "3";
-  const isReunion = tipo === "2";
-  const modoFinal = ASIGNACION[tipo] === "ambos" ? modoAsig : ASIGNACION[tipo];
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -173,8 +139,6 @@ export default function CrearEvento({ onBack, onCreated }) {
       multa_monto: Number(form.multa_monto),
       padres_por_dia: isGuardia ? Number(form.padres_por_dia) : null,
       dias_semana: isGuardia ? form.dias_semana : null,
-      // Lista manual de padres (si aplica)
-      padres_ids: modoFinal === "manual" ? [...seleccionados] : null,
     };
 
     try {
@@ -199,28 +163,22 @@ export default function CrearEvento({ onBack, onCreated }) {
         </button>
         <div>
           <h1 className="text-xl font-black text-stone-800">Nuevo evento</h1>
-          <p className="text-xs text-stone-400">
-            Paso {step} de {isCobro || isReunion ? 2 : 3}
-          </p>
+          <p className="text-xs text-stone-400">Paso {step} de 2</p>
         </div>
       </div>
 
       {/* Progress */}
       <div className="flex gap-1.5">
-        {[1, 2, 3].map((s) => {
-          const total = isCobro || isReunion ? 2 : 3;
-          if (s > total) return null;
-          return (
-            <div
-              key={s}
-              className={`flex-1 h-1.5 rounded-full transition-all
+        {[1, 2].map((s) => (
+          <div
+            key={s}
+            className={`flex-1 h-1.5 rounded-full transition-all
               ${step >= s ? "bg-amber-500" : "bg-stone-200"}`}
-            />
-          );
-        })}
+          />
+        ))}
       </div>
 
-      {/* ── Paso 1: Datos básicos ── */}
+      {/* Paso 1: Datos básicos */}
       {step === 1 && (
         <Paso1
           form={form}
@@ -231,33 +189,8 @@ export default function CrearEvento({ onBack, onCreated }) {
         />
       )}
 
-      {/* ── Paso 2: Asignación ── */}
-      {step === 2 && (
-        <Paso2
-          tipo={tipo}
-          modoAsig={modoAsig}
-          setModoAsig={setModoAsig}
-          modoFinal={modoFinal}
-          padres={padres}
-          loading={loadingPadres}
-          seleccionados={seleccionados}
-          setSeleccionados={setSeleccionados}
-          isGuardia={isGuardia}
-          isCobro={isCobro}
-          isReunion={isReunion}
-        />
-      )}
-
-      {/* ── Paso 3: Revisión ── */}
-      {step === 3 && (
-        <Paso3
-          form={form}
-          tipo={tipo}
-          modoFinal={modoFinal}
-          seleccionados={seleccionados}
-          padres={padres}
-        />
-      )}
+      {/* Paso 2: Revisión */}
+      {step === 2 && <PasoRevision form={form} tipo={tipo} />}
 
       {/* Navegación */}
       <div className="flex gap-3 mt-auto pt-4">
@@ -269,11 +202,11 @@ export default function CrearEvento({ onBack, onCreated }) {
             <ArrowLeft size={15} /> Atrás
           </button>
         )}
-        {step < (isCobro || isReunion ? 2 : 3) ? (
+        {step < 2 ? (
           <button
             onClick={() => {
-              if (step === 1 && !validarPaso1()) return;
-              setStep((s) => s + 1);
+              if (!validarPaso1()) return;
+              setStep(2);
             }}
             className="flex-1 h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
           >
@@ -287,7 +220,7 @@ export default function CrearEvento({ onBack, onCreated }) {
   );
 }
 
-// ── Paso 1 ────────────────────────────────────────────────────────────────────
+// ── Paso 1: Datos básicos ─────────────────────────────────────────────────────
 function Paso1({ form, set, isGuardia, isCobro, setForm }) {
   const DIAS = [
     { v: 1, l: "L" },
@@ -321,7 +254,7 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
               key={t.value}
               onClick={() => setForm((p) => ({ ...p, tipo: t.value }))}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all
-                ${form.tipo === t.value ? t.color + " border-2" : "bg-white border-stone-200 hover:border-stone-300"}`}
+                ${form.tipo === t.value ? t.color : "bg-white border-stone-200 hover:border-stone-300"}`}
             >
               <div className="flex-1">
                 <p
@@ -341,7 +274,6 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
         </div>
       </div>
 
-      {/* Título */}
       <Field
         label="Título *"
         value={form.titulo}
@@ -429,7 +361,7 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
         </>
       )}
 
-      {/* Cobro: monto obligatorio */}
+      {/* Multa */}
       {isCobro ? (
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-stone-600">
@@ -478,310 +410,8 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
   );
 }
 
-// ── Paso 2 ────────────────────────────────────────────────────────────────────
-function Paso2({
-  tipo,
-  modoAsig,
-  setModoAsig,
-  modoFinal,
-  padres,
-  loading,
-  seleccionados,
-  setSeleccionados,
-  isGuardia,
-  isCobro,
-  isReunion,
-}) {
-  const [search, setSearch] = useState("");
-
-  const toggle = (id) => {
-    setSeleccionados((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleTodos = () => {
-    if (seleccionados.size === padres.length) {
-      setSeleccionados(new Set());
-    } else {
-      setSeleccionados(new Set(padres.map((p) => p.id)));
-    }
-  };
-
-  const filtrados = padres.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.hijo?.toLowerCase().includes(search.toLowerCase()),
-  );
-
-  // Auto y cobro → solo info
-  if (isCobro || isReunion) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div
-          className={`rounded-2xl p-5 flex flex-col gap-2 ${isCobro ? "bg-emerald-50 border border-emerald-100" : "bg-blue-50 border border-blue-100"}`}
-        >
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-xl flex items-center justify-center ${isCobro ? "bg-emerald-100" : "bg-blue-100"}`}
-            >
-              <Users
-                size={20}
-                className={isCobro ? "text-emerald-600" : "text-blue-600"}
-              />
-            </div>
-            <div>
-              <p
-                className={`text-sm font-black ${isCobro ? "text-emerald-800" : "text-blue-800"}`}
-              >
-                {isCobro ? "Cuota general — todos los padres" : "Convocatoria general"}
-              </p>
-              <p
-                className={`text-xs ${isCobro ? "text-emerald-600" : "text-blue-500"}`}
-              >
-                {padres.length} padres registrados
-              </p>
-            </div>
-          </div>
-          <p
-            className={`text-xs ${isCobro ? "text-emerald-600" : "text-blue-500"}`}
-          >
-            {isCobro
-              ? "Al crear el evento, se asignará automáticamente a todos los padres con el monto indicado."
-              : "Al crear el evento, todos los padres quedarán asignados a esta reunión."}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // Guardia → también selección manual (mismos padres rotan por fecha)
-  if (isGuardia) {
-    return (
-      <div className="flex flex-col gap-4">
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
-          <p className="text-xs font-bold text-amber-700 mb-1">
-            ¿Cómo funciona la guardia?
-          </p>
-          <p className="text-xs text-amber-600 leading-relaxed">
-            Selecciona los padres que participarán en la rotación. El sistema
-            los distribuirá automáticamente por fecha según los días y la
-            cantidad por día que configuraste.
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-bold text-stone-600">
-            {seleccionados.size} de {padres.length} seleccionados
-          </p>
-          <button
-            onClick={toggleTodos}
-            className="text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
-          >
-            {seleccionados.size === padres.length
-              ? "Deseleccionar todos"
-              : "Seleccionar todos"}
-          </button>
-        </div>
-
-        <div className="relative">
-          <Search
-            size={14}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
-          />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar padre o alumno..."
-            className="w-full h-9 pl-8 pr-3 bg-white border border-stone-200 rounded-xl text-xs text-stone-700 outline-none focus:border-amber-400"
-          />
-        </div>
-
-        <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50 max-h-72 overflow-y-auto">
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <Loader2 size={20} className="text-amber-400 animate-spin" />
-            </div>
-          ) : filtrados.length === 0 ? (
-            <p className="text-center text-stone-400 text-sm py-6">
-              Sin resultados
-            </p>
-          ) : (
-            filtrados.map((p) => {
-              const checked = seleccionados.has(p.id);
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => toggle(p.id)}
-                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors
-                  ${checked ? "bg-amber-50" : "hover:bg-stone-50"}`}
-                >
-                  <div
-                    className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all
-                  ${checked ? "bg-amber-500 border-amber-500" : "border-stone-300"}`}
-                  >
-                    {checked && (
-                      <Check size={11} className="text-white" strokeWidth={3} />
-                    )}
-                  </div>
-                  <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                    <span className="text-[10px] font-black text-amber-700">
-                      {p.nombre
-                        .split(" ")
-                        .slice(0, 2)
-                        .map((w) => w[0])
-                        .join("")}
-                    </span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-stone-700 truncate">
-                      {p.nombre}
-                    </p>
-                    <p className="text-xs text-stone-400">
-                      {p.hijo} · {p.grado}
-                    </p>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-
-        {seleccionados.size > 0 && seleccionados.size < 2 && (
-          <p className="text-xs text-orange-500 font-medium">
-            ⚠ Selecciona al menos 2 padres para una rotación efectiva
-          </p>
-        )}
-      </div>
-    );
-  }
-
-  // Faena y Actividad → manual o todos
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Toggle manual / todos (solo actividad) */}
-      {tipo === "4" && (
-        <div className="flex bg-stone-100 rounded-xl p-1 gap-1">
-          {[
-            ["manual", "Seleccionar padres"],
-            ["auto", "Todos los padres"],
-          ].map(([v, l]) => (
-            <button
-              key={v}
-              onClick={() => setModoAsig(v)}
-              className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
-                ${modoAsig === v ? "bg-white text-amber-600 shadow-sm" : "text-stone-500"}`}
-            >
-              {l}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {modoFinal === "auto" ? (
-        <div className="bg-amber-50 border border-amber-100 rounded-2xl p-4 text-center">
-          <Users size={28} className="text-amber-500 mx-auto mb-2" />
-          <p className="text-sm font-bold text-amber-800">
-            Todos los padres ({padres.length})
-          </p>
-          <p className="text-xs text-amber-600 mt-1">
-            Se asignarán automáticamente al crear
-          </p>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-stone-600">
-              {seleccionados.size} de {padres.length} seleccionados
-            </p>
-            <button
-              onClick={toggleTodos}
-              className="text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
-            >
-              {seleccionados.size === padres.length
-                ? "Deseleccionar todos"
-                : "Seleccionar todos"}
-            </button>
-          </div>
-
-          {/* Buscador */}
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar padre o alumno..."
-              className="w-full h-9 pl-8 pr-3 bg-white border border-stone-200 rounded-xl text-xs text-stone-700 outline-none focus:border-amber-400"
-            />
-          </div>
-
-          {/* Lista */}
-          <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50 max-h-72 overflow-y-auto">
-            {loading ? (
-              <div className="flex justify-center py-6">
-                <Loader2 size={20} className="text-amber-400 animate-spin" />
-              </div>
-            ) : filtrados.length === 0 ? (
-              <p className="text-center text-stone-400 text-sm py-6">
-                Sin resultados
-              </p>
-            ) : (
-              filtrados.map((p) => {
-                const checked = seleccionados.has(p.id);
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => toggle(p.id)}
-                    className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors
-                    ${checked ? "bg-amber-50" : "hover:bg-stone-50"}`}
-                  >
-                    <div
-                      className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all
-                    ${checked ? "bg-amber-500 border-amber-500" : "border-stone-300"}`}
-                    >
-                      {checked && (
-                        <Check
-                          size={11}
-                          className="text-white"
-                          strokeWidth={3}
-                        />
-                      )}
-                    </div>
-                    <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                      <span className="text-[10px] font-black text-amber-700">
-                        {p.nombre
-                          .split(" ")
-                          .slice(0, 2)
-                          .map((w) => w[0])
-                          .join("")}
-                      </span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-stone-700 truncate">
-                        {p.nombre}
-                      </p>
-                      <p className="text-xs text-stone-400">
-                        {p.hijo} · {p.grado}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-
-// ── Paso 3: Revisión ──────────────────────────────────────────────────────────
-function Paso3({ form, tipo, modoFinal, seleccionados, padres }) {
+// ── Paso 2: Revisión ──────────────────────────────────────────────────────────
+function PasoRevision({ form, tipo }) {
   const isCobro = tipo === "3";
   return (
     <div className="flex flex-col gap-4">
@@ -822,31 +452,10 @@ function Paso3({ form, tipo, modoFinal, seleccionados, padres }) {
         )}
       </div>
 
-      {/* Asignación */}
       <div className="bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
-        <p className="text-xs font-bold text-amber-700 mb-1">
-          Asignación de padres
+        <p className="text-xs font-semibold text-amber-600">
+          💡 Los padres se asignarán desde la lista de eventos una vez creado.
         </p>
-        {tipo === "2" || tipo === "3" ? (
-          <p className="text-xs text-amber-600">
-            Todos los padres ({padres.length})
-          </p>
-        ) : tipo === "0" ? (
-          <p className="text-xs text-amber-600">
-            Rotación con {seleccionados.size} padre
-            {seleccionados.size !== 1 ? "s" : ""} seleccionado
-            {seleccionados.size !== 1 ? "s" : ""}
-          </p>
-        ) : modoFinal === "auto" ? (
-          <p className="text-xs text-amber-600">
-            Todos los padres ({padres.length})
-          </p>
-        ) : (
-          <p className="text-xs text-amber-600">
-            {seleccionados.size} padre{seleccionados.size !== 1 ? "s" : ""}{" "}
-            seleccionado{seleccionados.size !== 1 ? "s" : ""}
-          </p>
-        )}
       </div>
     </div>
   );
@@ -875,46 +484,4 @@ function BtnCrear({ onCrear }) {
       )}
     </button>
   );
-}
-
-// ── Atoms ─────────────────────────────────────────────────────────────────────
-function Field({ label, value, onChange, placeholder, type = "text" }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold text-stone-600">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
-      />
-    </div>
-  );
-}
-
-function Row({ label, value }) {
-  return (
-    <div className="flex justify-between items-center px-4 py-2.5">
-      <span className="text-xs text-stone-400">{label}</span>
-      <span className="text-xs font-semibold text-stone-700 text-right max-w-[60%]">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function Toast({ msg, type }) {
-  return (
-    <div
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg
-      ${type === "err" ? "bg-red-500 text-white" : "bg-stone-800 text-white"}`}
-    >
-      {msg}
-    </div>
-  );
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
 }

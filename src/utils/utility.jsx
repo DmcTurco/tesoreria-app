@@ -2,12 +2,18 @@ import { TrendingDown, TrendingUp } from "lucide-react";
 
 export const formatFecha = (iso) => {
   if (!iso) return "—";
-  const fecha = iso.includes("T") ? new Date(iso) : new Date(iso + "T00:00:00");
-  return fecha.toLocaleDateString("es-PE", {
+  // Siempre tomamos solo YYYY-MM-DD para evitar desfase UTC
+  const [y, m, d] = iso.slice(0, 10).split("-");
+  return new Date(+y, +m - 1, +d).toLocaleDateString("es-PE", {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
+};
+
+export const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 };
 
 export const Field = ({
@@ -72,19 +78,96 @@ export const StatCard = ({ value, label, color }) => {
 };
 
 // ── Atoms ─────────────────────────────────────────────────────────────────────
-export const StatCardResumen=({ label, value, sub, icon: Icon, iconBg, iconColor, trend }) => {
+export const StatCardResumen = ({
+  label,
+  value,
+  sub,
+  icon: Icon,
+  iconBg,
+  iconColor,
+  trend,
+}) => {
   return (
     <div className="bg-white rounded-2xl border border-stone-100 p-4">
       <div className="flex items-start justify-between mb-3">
-        <div className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}>
+        <div
+          className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}
+        >
           <Icon size={17} className={iconColor} />
         </div>
-        {trend === "up"   && <TrendingUp   size={13} className="text-emerald-400" />}
-        {trend === "down" && <TrendingDown size={13} className="text-red-400" />}
+        {trend === "up" && (
+          <TrendingUp size={13} className="text-emerald-400" />
+        )}
+        {trend === "down" && (
+          <TrendingDown size={13} className="text-red-400" />
+        )}
       </div>
       <p className="text-xl font-black text-stone-800 leading-tight">{value}</p>
       {sub && <p className="text-[11px] text-stone-400 mt-0.5">{sub}</p>}
       <p className="text-xs text-stone-400 mt-1">{label}</p>
+    </div>
+  );
+};
+
+// ── Fila de metadato con ícono, label y valor ─────────────────────────────────
+export function MetaItem({ icon, label, value, muted = false }) {
+  return (
+    <div className="flex items-start gap-1.5">
+      <span className="mt-0.5 shrink-0">{icon}</span>
+      <div>
+        <p className="text-[10px] font-bold text-stone-300 uppercase tracking-wide leading-none mb-0.5">
+          {label}
+        </p>
+        <p
+          className={`text-xs font-semibold ${muted ? "text-stone-300" : "text-stone-600"}`}
+        >
+          {value}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ── Sección con label, ícono y contador ───────────────────────────────────────
+export function Section({ label, icon, accent, count, empty, children }) {
+  const dotColor = {
+    teal: "bg-teal-400",
+    blue: "bg-blue-400",
+    stone: "bg-stone-300",
+  }[accent];
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center gap-2">
+        <span className={`w-2 h-2 rounded-full ${dotColor}`} />
+        <span className="text-xs font-black text-stone-500 uppercase tracking-widest flex items-center gap-1">
+          {icon} {label}
+        </span>
+        <span className="ml-1 text-xs font-bold text-stone-300">({count})</span>
+      </div>
+
+      {count === 0 ? (
+        <div className="bg-white rounded-2xl border border-stone-100 flex items-center justify-center py-8">
+          <p className="text-stone-300 text-sm font-medium">{empty}</p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">{children}</div>
+      )}
+    </div>
+  );
+}
+
+// ── Línea divisora punteada ───────────────────────────────────────────────────
+export function Divider() {
+  return <div className="border-t border-dashed border-stone-200" />;
+}
+
+// ── Banner de error ───────────────────────────────────────────────────────────
+export function ErrorBanner({ msg }) {
+  return (
+    <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+      <AlertCircle size={16} className="text-red-400 shrink-0" />
+      <p className="text-sm text-red-500 font-medium">{msg}</p>
     </div>
   );
 }

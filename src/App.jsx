@@ -16,6 +16,12 @@ import Multas       from "./pages/tesorero/Multas";
 import Presupuesto  from "./pages/tesorero/Presupuesto";
 
 import TablaComparativa from "./components/TablaComparativa";
+import ResumenProfe from "./pages/profesora/ResumenProfe";
+import Hoy from "./pages/profesora/Hoy";
+import EscanearQR from "./pages/profesora/EscanearQR";
+import MiEstado from "./pages/padre/MiEstado";
+import MiQR from "./pages/padre/MiQR";
+import Transparencia from "./pages/padre/Transparencia";
 
 // function App() {
 //   return (
@@ -50,13 +56,25 @@ function App() {
         {/* ── Profesora ── */}
         <Route path="profesora" element={
           <RequireAuth role={1}><DashboardProfesora /></RequireAuth>
-        } />
+        }>
+          <Route index            element={<Navigate to="resumen" replace />} />
+          <Route path="resumen"   element={<ResumenProfe />} />
+          <Route path="hoy"       element={<Hoy />} />
+          <Route path="escanear"  element={<EscanearQR />} />
+        </Route>
 
         {/* ── Padre ── */}
         <Route path="padre" element={
           <RequireAuth role={2}><DashboardPadre /></RequireAuth>
-        } />
+        }>
+          <Route index           element={<Navigate to="estado" replace />} />
+          <Route path="estado"   element={<MiEstado />} />
+          <Route path="qr"       element={<MiQR />} />
+          <Route path="eventos"  element={<Transparencia />} />
+        </Route>
       </Routes>
+
+
     </BrowserRouter>
   );
 }

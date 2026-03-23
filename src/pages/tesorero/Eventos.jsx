@@ -16,18 +16,11 @@ import { EVENTO_TIPO_LABEL, EVENTO_ESTADO } from "../../constants/estados";
 import useApi from "@/hook/useApi";
 import CrearEvento from "./evento/CrearEvento";
 import DetalleEvento from "./evento/DetalleEvento";
-import { formatFecha, Toast } from "../../utils/utility";
+import AsignarPadres from "./evento/AsignarPadres";
+import { Toast } from "../../utils/utility";
 import EventoCard from "./evento/EventoCard";
-const TIPO_COLORS = {
-  0: "bg-amber-50 text-amber-700",
-  1: "bg-orange-50 text-orange-600",
-  2: "bg-blue-50 text-blue-600",
-  3: "bg-emerald-50 text-emerald-700",
-  4: "bg-purple-50 text-purple-600",
-};
 
 export default function Eventos() {
-  const [modal, setModal] = useState(null);
   const [creando, setCreando] = useState(false);
   const [asignar, setAsignar] = useState(null); // evento para asignar padres
   const [toast, setToast] = useState(null);
@@ -89,8 +82,21 @@ export default function Eventos() {
         />
       )}
 
+      {asignar && !creando && !detalle && (
+        <AsignarPadres
+          evento={asignar}
+          onBack={() => setAsignar(null)}
+          onDone={(msg) => {
+            setAsignar(null);
+            showToast(msg);
+            getEventos();
+          }}
+          onToast={showToast}
+        />
+      )}
+
       {/* Lista principal — se oculta cuando hay detalle o creando */}
-      {!creando && !detalle && (
+      {!creando && !detalle && !asignar && (
         <div className="flex flex-col gap-5">
           {toast && <Toast msg={toast.msg} type={toast.type} />}
 

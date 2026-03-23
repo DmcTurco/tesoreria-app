@@ -9,17 +9,18 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useMovimientos } from "../../hook/useMovimientos";
-import { MOVIMIENTO_TIPO } from "../../constants/estados";
+import { MOVIMIENTO_TIPO, MOVIMIENTO_CATEGORIA_LABEL } from "../../constants/estados";
+import { Field, formatFecha, Toast, today }  from "../../utils/utility";
 
-const CATEGORIAS = [
-  "Cuota / Pago",
-  "Multa",
-  "Mantenimiento",
-  "Materiales",
-  "Eventos",
-  "Servicios",
-  "Otros",
-];
+// const CATEGORIAS = [
+//   "Cuota / Pago",
+//   "Multa",
+//   "Mantenimiento",
+//   "Materiales",
+//   "Eventos",
+//   "Servicios",
+//   "Otros",
+// ];
 
 export default function Movimientos() {
   const [filtroTipo, setFiltroTipo] = useState("");
@@ -166,7 +167,7 @@ export default function Movimientos() {
                   {m.descripcion}
                 </p>
                 <p className="text-xs text-stone-400">
-                  {m.categoria} · {formatFecha(m.fecha)}
+                  {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}
                 </p>
               </div>
               <span
@@ -209,7 +210,7 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
     tipo: "0",
     monto: "",
     descripcion: "",
-    categoria: "Otros",
+    categoria: 4,
     fecha: today(),
     comprobante: "",
     observaciones: "",
@@ -274,12 +275,12 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
         <label className="text-xs font-bold text-stone-600">Categoría</label>
         <select
           value={form.categoria}
-          onChange={set("categoria")}
+          onChange={(e) => setForm((p) => ({ ...p, categoria: Number(e.target.value) }))}
           className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
         >
-          {CATEGORIAS.map((c) => (
-            <option key={c}>{c}</option>
-          ))}
+        {Object.entries(MOVIMIENTO_CATEGORIA_LABEL).map(([v, l]) => (
+          <option key={v} value={v}>{l}</option>
+        ))}
         </select>
       </div>
       <Field
@@ -318,20 +319,6 @@ function Modal({ titulo, onClose, children }) {
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text" }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold text-stone-600">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
-      />
-    </div>
-  );
-}
 
 function BtnPrimary({ children, onClick, loading }) {
   return (
@@ -345,26 +332,4 @@ function BtnPrimary({ children, onClick, loading }) {
   );
 }
 
-function Toast({ msg, type }) {
-  return (
-    <div
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg
-      ${type === "err" ? "bg-red-500 text-white" : "bg-stone-800 text-white"}`}
-    >
-      {msg}
-    </div>
-  );
-}
 
-function formatFecha(iso) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-PE", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
-}

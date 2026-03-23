@@ -1,30 +1,19 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
 import AppLayout from "../../layouts/AppLayout";
-import MiEstado from "./MiEstado";
-import MiQR from "./MiQR";
-import Transparencia from "./Transparencia";
 
 export default function DashboardPadre() {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user") ?? "null");
-  const token = localStorage.getItem("auth_token");
-  const [tab, setTab] = useState("estado");
+  const location = useLocation();
+  const user     = JSON.parse(localStorage.getItem("user") ?? "null");
+  const token    = localStorage.getItem("auth_token");
 
-  if (!user || !token) {
-    navigate("/role", { replace: true });
-    return null;
-  }
+  if (!user || !token) return <Navigate to="/role" replace />;
 
-  const TABS = {
-    estado: <MiEstado />,
-    qr: <MiQR />,
-    eventos: <Transparencia />,
-  };
+  const tab = location.pathname.split("/").pop();
 
   return (
-    <AppLayout user={user} tab={tab} onTabChange={setTab}>
-      {TABS[tab] ?? <MiEstado />}
+    <AppLayout user={user} tab={tab} onTabChange={(t) => navigate(t)}>
+      <Outlet />
     </AppLayout>
   );
 }

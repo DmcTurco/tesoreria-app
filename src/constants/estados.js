@@ -33,3 +33,18 @@ export const ABONO_TIPO_LABEL = { multa: "Multa", cobro: "Cuota" };           //
 
 export const MOVIMIENTO_TIPO = { INGRESO: 0, EGRESO: 1 };
 export const MOVIMIENTO_TIPO_LABEL = { 0: "Ingreso", 1: "Egreso" };
+
+export const MOVIMIENTO_CATEGORIA = {
+  ABONO:     0,
+  ANULACION: 1,
+  EVENTO:    2,
+  CUOTA:     3,
+  OTRO:      4,
+};
+export const MOVIMIENTO_CATEGORIA_LABEL = {
+  0: "Abono",
+  1: "Anulación",
+  2: "Evento",
+  3: "Cuota",
+  4: "Otro",
+};

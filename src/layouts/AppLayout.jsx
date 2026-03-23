@@ -29,7 +29,7 @@ const NAV_TESORERO = [
 const NAV_PROFESORA = [
   { key: "hoy", label: "Hoy", icon: CalendarDays },
   { key: "escanear", label: "Escanear QR", icon: Users },
-  { key: "historial", label: "Historial", icon: ArrowLeftRight },
+  { key: "resumen", label: "Resumen", icon: LayoutDashboard },
 ];
 
 const NAV_PADRE = [

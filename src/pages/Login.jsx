@@ -215,7 +215,7 @@ export default function Login() {
         <div className="flex items-center gap-3 my-5">
           <div className="flex-1 h-px bg-stone-100" />
           <span className="text-[10px] text-stone-300 font-medium">
-            APAFA · Sistema de Tesorería
+            TURCO · Sistema de Tesorería
           </span>
           <div className="flex-1 h-px bg-stone-100" />
         </div>

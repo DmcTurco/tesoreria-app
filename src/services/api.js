@@ -2,9 +2,13 @@ const TOKEN_KEY = 'auth_token';
 
 // ✅ Función exportada como named export
 export const getApiBaseUrl = () => {
-    const host = window.location.hostname;
-    const protocol = window.location.protocol;
-    return `${protocol}//${host}/api`;
+    // 👉 Si corre en app móvil (Capacitor)
+    if (window.location.protocol === 'capacitor:' || window.location.hostname === 'localhost') {
+        return 'http://192.168.100.2/api';
+    }
+
+    // 👉 Web normal
+    return `${window.location.protocol}//${window.location.host}/api`;
 };
 
 console.log("API URL: ", getApiBaseUrl());

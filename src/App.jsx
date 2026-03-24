@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, HashRouter } from "react-router-dom";
 import RoleSelector from "./pages/RoleSelector";
 import Login from "./pages/Login";
 import DashboardTesorero from "./pages/tesorero/DashboardTesorero";
@@ -33,7 +33,7 @@ import Transparencia from "./pages/padre/Transparencia";
 
 function App() {
   return (
-    <BrowserRouter basename="/terminal/tesoreria/">
+    <HashRouter >
       <Routes>
         <Route path="/"     element={<Navigate to="role" replace />} />
         <Route path="role"  element={<RoleSelector />} />
@@ -75,7 +75,7 @@ function App() {
       </Routes>
 
 
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 

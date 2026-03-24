@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">tesoreria</string>
+    <string name="title_activity_main">tesoreria</string>
+    <string name="package_name">com.tesoreria.app</string>
+    <string name="custom_url_scheme">com.tesoreria.app</string>
+</resources>

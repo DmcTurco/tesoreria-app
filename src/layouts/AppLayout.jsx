@@ -73,7 +73,9 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
             <p className="text-sm font-black text-stone-800 tracking-wide">
               Tesorería
             </p>
-            <p className="text-[10px] text-stone-400 font-medium">APAFA</p>
+            <p className="text-[10px] text-stone-400 font-medium">
+              sistema de tesoreria
+            </p>
           </div>
         </div>
 
@@ -133,7 +135,16 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
       </aside>
 
       {/* ── Mobile header ───────────────────────────────────────────── */}
-      <header className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-white border-b border-stone-100 z-20 flex items-center justify-between px-4">
+      {/* 
+        FIX: h-[calc(3.5rem+env(safe-area-inset-top))] en vez de h-14 fijo.
+        El header crece con el inset de la status bar, y pt-[env(...)] 
+        empuja el contenido hacia abajo de ese área.
+      */}
+      <header className="lg:hidden fixed top-0 left-0 right-0 z-20
+        h-[calc(3.5rem+env(safe-area-inset-top))]
+        pt-[env(safe-area-inset-top)]
+        bg-white border-b border-stone-100
+        flex items-center justify-between px-4">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-amber-500 flex items-center justify-center">
             <Building2 size={15} className="text-white" strokeWidth={1.8} />
@@ -161,14 +172,18 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
             className="absolute inset-0 bg-black/30"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
+          {/* 
+            FIX: pt-[env(safe-area-inset-top)] para que el drawer 
+            también respete la status bar.
+          */}
+          <div className="absolute right-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col pt-[env(safe-area-inset-top)]">
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
               <p className="font-black text-stone-800">Menú</p>
               <button onClick={() => setOpen(false)}>
                 <X size={20} className="text-stone-400" />
               </button>
             </div>
-            <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
+            <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5 overflow-y-auto">
               {nav.map(({ key, label, icon: Icon }) => {
                 const active = tab === key;
                 return (
@@ -190,7 +205,7 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
                 );
               })}
             </nav>
-            <div className="px-3 py-4 border-t border-stone-100">
+            <div className="px-3 py-4 border-t border-stone-100 pb-[calc(1rem+env(safe-area-inset-bottom))]">
               <button
                 onClick={handleLogout}
                 className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors"
@@ -203,14 +218,22 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
       )}
 
       {/* ── Bottom nav mobile ────────────────────────────────────────── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-stone-100 flex">
+      {/* 
+        FIX: h-[calc(60px+env(safe-area-inset-bottom))] para que la barra 
+        crezca hacia abajo con el home indicator de Android/iOS,
+        y pb-[env(...)] empuja los botones hacia arriba del área de gestos.
+      */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20
+        bg-white border-t border-stone-100 flex
+        h-[calc(60px+env(safe-area-inset-bottom))]">
         {nav.slice(0, 5).map(({ key, label, icon: Icon }) => {
           const active = tab === key;
           return (
             <button
               key={key}
               onClick={() => onTabChange(key)}
-              className={`flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors
+              className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors
+                pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]
                 ${active ? "text-amber-500" : "text-stone-400"}`}
             >
               <Icon size={20} strokeWidth={active ? 2.2 : 1.6} />
@@ -221,7 +244,16 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
       </nav>
 
       {/* ── Main content ─────────────────────────────────────────────── */}
-      <main className="flex-1 lg:ml-56 pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
+      {/* 
+        FIX: pt-[calc(3.5rem+env(safe-area-inset-top))] debe coincidir 
+        exactamente con la altura real del header móvil.
+        pb-[calc(60px+env(safe-area-inset-bottom)+1rem)] deja espacio 
+        sobre el bottom nav incluyendo el home indicator.
+      */}
+      <main className="flex-1 lg:ml-56
+        pt-[calc(3.5rem+env(safe-area-inset-top))] lg:pt-0
+        pb-[calc(60px+env(safe-area-inset-bottom)+1rem)] lg:pb-0
+        min-h-screen">
         <div className="max-w-5xl mx-auto px-4 py-6">{children}</div>
       </main>
     </div>

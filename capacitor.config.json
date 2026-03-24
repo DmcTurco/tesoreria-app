@@ -1,0 +1,12 @@
+{
+  "appId": "com.tesoreria.app",
+  "appName": "tesoreria",
+  "webDir": "dist",
+  "plugins": {
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK",
+      "backgroundColor": "#ffffff"
+    }
+  }
+}

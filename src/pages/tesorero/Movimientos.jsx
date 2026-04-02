@@ -7,25 +7,24 @@ import {
   X,
   Trash2,
   AlertCircle,
+  ChevronRight,
+  Users,
 } from "lucide-react";
 import { useMovimientos } from "../../hook/useMovimientos";
-import { MOVIMIENTO_TIPO, MOVIMIENTO_CATEGORIA_LABEL } from "../../constants/estados";
-import { Field, formatFecha, Toast, today }  from "../../utils/utility";
-
-// const CATEGORIAS = [
-//   "Cuota / Pago",
-//   "Multa",
-//   "Mantenimiento",
-//   "Materiales",
-//   "Eventos",
-//   "Servicios",
-//   "Otros",
-// ];
+import { useEventos } from "../../hook/useEventos";
+import {
+  MOVIMIENTO_TIPO,
+  MOVIMIENTO_CATEGORIA_LABEL,
+} from "../../constants/estados";
+import { formatFecha, Toast } from "../../utils/utility";
+import MovimientoEventoDetalle from "./movimiento/MovimientoEventoDetalle";
 
 export default function Movimientos() {
   const [filtroTipo, setFiltroTipo] = useState("");
+  const [tabPrincipal, setTabPrincipal] = useState("todos"); // "todos" | "eventos"
   const [modal, setModal] = useState(false);
   const [toast, setToast] = useState(null);
+  const [eventoDetalle, setEventoDetalle] = useState(null); // evento seleccionado
 
   const {
     loading,
@@ -39,10 +38,20 @@ export default function Movimientos() {
     deleteMovimiento,
   } = useMovimientos();
 
-  // Carga inicial y cuando cambia el filtro
+  const {
+    loading: loadingEventos,
+    eventos,
+    getEventos,
+    getEventoMovimientos,
+  } = useEventos();
+
   useEffect(() => {
     getMovimientos({ tipo: filtroTipo !== "" ? Number(filtroTipo) : null });
   }, [filtroTipo]);
+
+  useEffect(() => {
+    if (tabPrincipal === "eventos") getEventos();
+  }, [tabPrincipal]);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -63,6 +72,18 @@ export default function Movimientos() {
     }
   };
 
+  // Si hay un evento seleccionado → mostrar detalle
+  if (eventoDetalle) {
+    return (
+      <MovimientoEventoDetalle
+        evento={eventoDetalle}
+        getEventoMovimientos={getEventoMovimientos}
+        onBack={() => setEventoDetalle(null)}
+        onToast={showToast}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col gap-5">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
@@ -81,7 +102,6 @@ export default function Movimientos() {
         </button>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
           <AlertCircle size={16} className="text-red-400 shrink-0" />
@@ -117,76 +137,178 @@ export default function Movimientos() {
         </div>
       </div>
 
-      {/* Filtro tipo */}
-      <div className="flex gap-2">
+      {/* Tabs principal */}
+      <div className="flex bg-stone-100 rounded-xl p-1 gap-1">
         {[
-          ["", "Todos"],
-          ["0", "Ingresos"],
-          ["1", "Egresos"],
-        ].map(([v, l]) => (
+          ["todos", "Todos"],
+          ["eventos", "Por Evento"],
+        ].map(([k, l]) => (
           <button
-            key={v}
-            onClick={() => setFiltroTipo(v)}
-            className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all
-              ${
-                filtroTipo === v
-                  ? "bg-amber-500 text-white"
-                  : "bg-white border border-stone-200 text-stone-500 hover:border-amber-300"
-              }`}
+            key={k}
+            onClick={() => setTabPrincipal(k)}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
+							${tabPrincipal === k ? "bg-white text-amber-600 shadow-sm" : "text-stone-500"}`}
           >
             {l}
           </button>
         ))}
       </div>
 
-      {/* Lista */}
-      <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 size={24} className="text-amber-400 animate-spin" />
-          </div>
-        ) : movimientos.length === 0 ? (
-          <p className="text-center text-stone-400 text-sm py-10">
-            Sin movimientos
-          </p>
-        ) : (
-          movimientos.map((m) => (
-            <div key={m.id} className="flex items-center gap-3 px-4 py-3 group">
-              <div
-                className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
-                ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-50" : "bg-red-50"}`}
-              >
-                {m.tipo === MOVIMIENTO_TIPO.INGRESO ? (
-                  <TrendingUp size={15} className="text-emerald-500" />
-                ) : (
-                  <TrendingDown size={15} className="text-red-400" />
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-stone-700 truncate">
-                  {m.descripcion}
-                </p>
-                <p className="text-xs text-stone-400">
-                  {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}
-                </p>
-              </div>
-              <span
-                className={`text-sm font-bold shrink-0
-                ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}
-              >
-                {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{" "}
-                {Number(m.monto).toFixed(2)}
-              </span>
+      {/* ── Tab Todos ── */}
+      {tabPrincipal === "todos" && (
+        <>
+          <div className="flex gap-2">
+            {[
+              ["", "Todos"],
+              ["0", "Ingresos"],
+              ["1", "Egresos"],
+            ].map(([v, l]) => (
               <button
-                onClick={() => handleDelete(m.id)}
-                className="text-stone-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                key={v}
+                onClick={() => setFiltroTipo(v)}
+                className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all
+									${
+                    filtroTipo === v
+                      ? "bg-amber-500 text-white"
+                      : "bg-white border border-stone-200 text-stone-500 hover:border-amber-300"
+                  }`}
               >
-                <Trash2 size={14} />
+                {l}
               </button>
+            ))}
+          </div>
+
+          <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50">
+            {loading ? (
+              <div className="flex justify-center py-10">
+                <Loader2 size={24} className="text-amber-400 animate-spin" />
+              </div>
+            ) : movimientos.length === 0 ? (
+              <p className="text-center text-stone-400 text-sm py-10">
+                Sin movimientos
+              </p>
+            ) : (
+              movimientos.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-3 px-4 py-3 group"
+                >
+                  <div
+                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
+										${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-50" : "bg-red-50"}`}
+                  >
+                    {m.tipo === MOVIMIENTO_TIPO.INGRESO ? (
+                      <TrendingUp size={15} className="text-emerald-500" />
+                    ) : (
+                      <TrendingDown size={15} className="text-red-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-stone-700 truncate">
+                      {m.descripcion}
+                    </p>
+                    <p className="text-xs text-stone-400">
+                      {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} ·{" "}
+                      {formatFecha(m.fecha)}
+                    </p>
+                  </div>
+                  <span
+                    className={`text-sm font-bold shrink-0
+										${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}
+                  >
+                    {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{" "}
+                    {Number(m.monto).toFixed(2)}
+                  </span>
+                  <button
+                    onClick={() => handleDelete(m.id)}
+                    className="text-stone-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── Tab Por Evento ── */}
+      {tabPrincipal === "eventos" && (
+        <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50">
+          {loadingEventos ? (
+            <div className="flex justify-center py-10">
+              <Loader2 size={24} className="text-amber-400 animate-spin" />
             </div>
-          ))
-        )}
-      </div>
+          ) : eventos.filter((e) => e.tipo === 3).length === 0 ? (
+            <p className="text-center text-stone-400 text-sm py-10">
+              Sin eventos de cuota
+            </p>
+          ) : (
+            eventos
+              .filter((e) => e.tipo === 3)
+              .map((e) => (
+                <button
+                  key={e.id}
+                  onClick={() => setEventoDetalle(e)}
+                  className="w-full flex flex-col gap-2 px-4 py-3 hover:bg-stone-50 transition-colors text-left border-b border-stone-50 last:border-0"
+                >
+                  {/* Fila superior */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                      <Users size={15} className="text-amber-500" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-stone-700 truncate">
+                        {e.titulo}
+                      </p>
+                      <p className="text-xs text-stone-400">
+                        S/ {Number(e.multa_monto).toFixed(2)} ·{" "}
+                        {formatFecha(e.fecha_inicio)}
+                      </p>
+                    </div>
+                    <ChevronRight
+                      size={16}
+                      className="text-stone-300 shrink-0"
+                    />
+                  </div>
+
+                  {/* Resumen pagos */}
+                  {e.resumen_pagos && (
+                    <div className="ml-12 flex gap-3">
+                      {/* Padres */}
+                      <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
+                        <p className="text-[10px] text-stone-400">Padres</p>
+                        <p className="text-xs font-black text-stone-700">
+                          {e.resumen_pagos.pagados}
+                          <span className="font-normal text-stone-400">
+                            /{e.resumen_pagos.total_padres}
+                          </span>
+                        </p>
+                      </div>
+                      {/* Recaudado */}
+                      <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
+                        <p className="text-[10px] text-emerald-600">
+                          Recaudado
+                        </p>
+                        <p className="text-xs font-black text-emerald-700">
+                          S/{" "}
+                          {Number(e.resumen_pagos.monto_recaudado).toFixed(2)}
+                        </p>
+                      </div>
+                      {/* Esperado */}
+                      <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
+                        <p className="text-[10px] text-amber-600">Esperado</p>
+                        <p className="text-xs font-black text-amber-700">
+                          S/ {Number(e.resumen_pagos.monto_esperado).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ))
+          )}
+        </div>
+      )}
 
       {modal && (
         <ModalNuevoMovimiento
@@ -203,133 +325,3 @@ export default function Movimientos() {
     </div>
   );
 }
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
-  const [form, setForm] = useState({
-    tipo: "0",
-    monto: "",
-    descripcion: "",
-    categoria: 4,
-    fecha: today(),
-    comprobante: "",
-    observaciones: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
-
-  const handleSave = async () => {
-    if (!form.monto || !form.descripcion) {
-      onError("Completa monto y descripción");
-      return;
-    }
-    setLoading(true);
-    try {
-      await createMovimiento({ ...form, tipo: Number(form.tipo) });
-      onSaved();
-    } catch (e) {
-      onError(e.message ?? "Error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <Modal titulo="Nuevo movimiento" onClose={onClose}>
-      {/* Toggle ingreso/egreso */}
-      <div className="flex bg-stone-100 rounded-xl p-1 gap-1 mb-1">
-        {[
-          ["0", "Ingreso"],
-          ["1", "Egreso"],
-        ].map(([v, l]) => (
-          <button
-            key={v}
-            onClick={() => setForm((p) => ({ ...p, tipo: v }))}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
-              ${
-                form.tipo === v
-                  ? v === "0"
-                    ? "bg-emerald-500 text-white"
-                    : "bg-red-500 text-white"
-                  : "text-stone-500"
-              }`}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-      <Field
-        label="Monto (S/)"
-        type="number"
-        value={form.monto}
-        onChange={set("monto")}
-        placeholder="0.00"
-      />
-      <Field
-        label="Descripción"
-        value={form.descripcion}
-        onChange={set("descripcion")}
-        placeholder="Ej: Cobro cuota mantenimiento"
-      />
-      <div className="flex flex-col gap-1">
-        <label className="text-xs font-bold text-stone-600">Categoría</label>
-        <select
-          value={form.categoria}
-          onChange={(e) => setForm((p) => ({ ...p, categoria: Number(e.target.value) }))}
-          className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
-        >
-        {Object.entries(MOVIMIENTO_CATEGORIA_LABEL).map(([v, l]) => (
-          <option key={v} value={v}>{l}</option>
-        ))}
-        </select>
-      </div>
-      <Field
-        label="Fecha"
-        type="date"
-        value={form.fecha}
-        onChange={set("fecha")}
-      />
-      <Field
-        label="Comprobante (opcional)"
-        value={form.comprobante}
-        onChange={set("comprobante")}
-        placeholder="Nº boleta o recibo"
-      />
-      <BtnPrimary onClick={handleSave} loading={loading}>
-        Guardar
-      </BtnPrimary>
-    </Modal>
-  );
-}
-
-// ── Atoms ─────────────────────────────────────────────────────────────────────
-function Modal({ titulo, onClose, children }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white">
-          <p className="font-black text-stone-800 text-sm">{titulo}</p>
-          <button onClick={onClose}>
-            <X size={18} className="text-stone-400 hover:text-stone-600" />
-          </button>
-        </div>
-        <div className="p-5 flex flex-col gap-3">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-
-function BtnPrimary({ children, onClick, loading }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 mt-1"
-    >
-      {loading ? <Loader2 size={16} className="animate-spin" /> : children}
-    </button>
-  );
-}
-
-

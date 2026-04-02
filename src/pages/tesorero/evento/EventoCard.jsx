@@ -122,6 +122,33 @@ export default function EventoCard({
         </div>
       </div>
 
+      {/* Resumen pagos — solo cuotas */}
+      {e.tipo === 3 && e.resumen_pagos && (
+        <div className="flex gap-2 px-4 pb-3">
+          <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
+            <p className="text-[10px] text-stone-400">Padres</p>
+            <p className="text-xs font-black text-stone-700">
+              {e.resumen_pagos.pagados}
+              <span className="font-normal text-stone-400">
+                /{e.resumen_pagos.total_padres}
+              </span>
+            </p>
+          </div>
+          <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
+            <p className="text-[10px] text-emerald-600">Recaudado</p>
+            <p className="text-xs font-black text-emerald-700">
+              S/ {Number(e.resumen_pagos.monto_recaudado).toFixed(2)}
+            </p>
+          </div>
+          <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
+            <p className="text-[10px] text-amber-600">Esperado</p>
+            <p className="text-xs font-black text-amber-700">
+              S/ {Number(e.resumen_pagos.monto_esperado).toFixed(2)}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Acciones */}
       <div className="flex border-t border-stone-50 divide-x divide-stone-50">
         <button

@@ -122,6 +122,29 @@ export const useEventos = () => {
         }
     }, [api]);
 
+    /**
+ * Obtener movimientos de un evento con detalle por padre
+ * @param {number} eventoId
+ */
+    const getEventoMovimientos = useCallback(async (eventoId) => {
+        try {
+            if (!eventoId) throw new Error("eventoId es requerido");
+
+            setLoading(true);
+            setError(null);
+
+            const response = await api.get(`/eventos/${eventoId}/movimientos`);
+            return response;
+
+        } catch (err) {
+            console.error("❌ Error en getEventoMovimientos:", err);
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, [api]);
+
     return {
         loading,
         error,
@@ -130,5 +153,6 @@ export const useEventos = () => {
         createEvento,
         cerrarEvento,
         exonerarPadre,
+        getEventoMovimientos,
     };
 };

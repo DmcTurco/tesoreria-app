@@ -44,11 +44,11 @@ export default function Padres() {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-xl font-black text-stone-800">Padres</h1>
           <p className="text-sm text-stone-400">{padres.length} registrados</p>
@@ -62,7 +62,7 @@ export default function Padres() {
       </div>
 
       {/* Buscador */}
-      <div className="relative">
+      <div className="relative shrink-0">
         <Search
           size={16}
           className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
@@ -75,41 +75,43 @@ export default function Padres() {
         />
       </div>
 
-      {/* Lista */}
-      <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50">
-        {loading && <LoadingRows />}
-        {!loading && filtrados.length === 0 && (
-          <p className="text-center text-stone-400 text-sm py-10">
-            Sin resultados
-          </p>
-        )}
-        {!loading &&
-          filtrados.map((p) => (
-            <div
-              key={p.id}
-              className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 cursor-pointer transition-colors"
-              onClick={() => setModal(p)}
-            >
-              <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                <span className="text-sm font-black text-amber-700">
-                  {p.nombre
-                    .split(" ")
-                    .slice(0, 2)
-                    .map((w) => w[0])
-                    .join("")}
-                </span>
+      {/* Lista — scrollable */}
+      <div className="flex-1 min-h-0 rounded-2xl border border-stone-100 overflow-hidden">
+        <div className="h-full overflow-y-auto overflow-x-hidden bg-white divide-y divide-stone-50">
+          {loading && <LoadingRows />}
+          {!loading && filtrados.length === 0 && (
+            <p className="text-center text-stone-400 text-sm py-10">
+              Sin resultados
+            </p>
+          )}
+          {!loading &&
+            filtrados.map((p) => (
+              <div
+                key={p.id}
+                className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50 cursor-pointer transition-colors overflow-hidden"
+                onClick={() => setModal(p)}
+              >
+                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-black text-amber-700">
+                    {p.nombre
+                      .split(" ")
+                      .slice(0, 2)
+                      .map((w) => w[0])
+                      .join("")}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="text-sm font-bold text-stone-700 line-clamp-2 wrap-break-word">
+                    {p.nombre}
+                  </p>
+                  <p className="text-xs text-stone-400 wrap-break-word">
+                    {p.codigo} · {p.hijo} · {p.grado}
+                  </p>
+                </div>
+                <ChevronRight size={16} className="text-stone-300 shrink-0" />
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-bold text-stone-700 truncate">
-                  {p.nombre}
-                </p>
-                <p className="text-xs text-stone-400 truncate">
-                  {p.codigo} · {p.hijo} · {p.grado}
-                </p>
-              </div>
-              <ChevronRight size={16} className="text-stone-300 shrink-0" />
-            </div>
-          ))}
+            ))}
+        </div>
       </div>
 
       {modal === "nuevo" && (

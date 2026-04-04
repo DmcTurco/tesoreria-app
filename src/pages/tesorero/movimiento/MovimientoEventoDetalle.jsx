@@ -19,7 +19,6 @@ export default function MovimientoEventoDetalle({
   const [loading, setLoading] = useState(true);
   const [busqueda, setBusqueda] = useState("");
 
-  // Filtrar padres
   const padresFiltrados = !data
     ? []
     : data.padres.filter((p) => {
@@ -36,7 +35,7 @@ export default function MovimientoEventoDetalle({
       try {
         const res = await getEventoMovimientos(evento.id);
         setData(res);
-        console.log("movimientos:", res.padres[0]?.movimientos); // ← aquí
+        console.log("movimientos:", res.padres[0]?.movimientos);
       } catch (e) {
         onToast("Error al cargar movimientos", "err");
       } finally {
@@ -47,17 +46,17 @@ export default function MovimientoEventoDetalle({
   }, [evento.id]);
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 shrink-0">
         <button
           onClick={onBack}
-          className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors"
+          className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
         >
           <ArrowLeft size={16} className="text-stone-600" />
         </button>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-lg font-black text-stone-800 truncate">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <h1 className="text-lg font-black text-stone-800 line-clamp-2 wrap-break-word">
             {evento.titulo}
           </h1>
           <p className="text-xs text-stone-400">Detalle de pagos por padre</p>
@@ -71,74 +70,51 @@ export default function MovimientoEventoDetalle({
       ) : !data ? null : (
         <>
           {/* Resumen del evento */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-stone-50 rounded-2xl p-3 text-center">
-              <p className="text-lg font-black text-stone-700">
-                {data.evento.total_padres}
-              </p>
+          <div className="grid grid-cols-3 gap-3 shrink-0">
+            <div className="bg-stone-50 rounded-2xl p-3 text-center min-w-0">
+              <p className="text-lg font-black text-stone-700">{data.evento.total_padres}</p>
               <p className="text-[11px] text-stone-400">Total</p>
             </div>
-            <div className="bg-emerald-50 rounded-2xl p-3 text-center">
-              <p className="text-lg font-black text-emerald-700">
-                {data.evento.pagados}
-              </p>
+            <div className="bg-emerald-50 rounded-2xl p-3 text-center min-w-0">
+              <p className="text-lg font-black text-emerald-700">{data.evento.pagados}</p>
               <p className="text-[11px] text-emerald-600">Pagados</p>
             </div>
-            <div className="bg-red-50 rounded-2xl p-3 text-center">
-              <p className="text-lg font-black text-red-500">
-                {data.evento.pendientes}
-              </p>
+            <div className="bg-red-50 rounded-2xl p-3 text-center min-w-0">
+              <p className="text-lg font-black text-red-500">{data.evento.pendientes}</p>
               <p className="text-[11px] text-red-400">Pendientes</p>
             </div>
           </div>
 
-          {/* Historial de precios ← aquí */}
+          {/* Historial de precios */}
           {data.precio_historial?.length > 0 && (
-            <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
+            <div className="shrink-0 bg-white rounded-2xl border border-stone-100 overflow-hidden">
               <div className="px-4 py-2.5 bg-stone-50 border-b border-stone-100">
-                <p className="text-xs font-bold text-stone-600">
-                  Historial de precios
-                </p>
+                <p className="text-xs font-bold text-stone-600">Historial de precios</p>
               </div>
               <div className="divide-y divide-stone-50">
                 {data.precio_historial.map((h, i) => {
                   const subio = h.monto_nuevo > h.monto_anterior;
                   return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-3 px-4 py-2.5"
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0
-														${subio ? "bg-orange-50" : "bg-blue-50"}`}
-                      >
-                        {subio ? (
-                          <TrendingUp size={11} className="text-orange-500" />
-                        ) : (
-                          <TrendingDown size={11} className="text-blue-500" />
-                        )}
+                    <div key={i} className="flex items-center gap-3 px-4 py-2.5 overflow-hidden">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${subio ? "bg-orange-50" : "bg-blue-50"}`}>
+                        {subio
+                          ? <TrendingUp size={11} className="text-orange-500" />
+                          : <TrendingDown size={11} className="text-blue-500" />}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs text-stone-500">
-                          <span className="font-bold text-stone-700">
-                            S/ {h.monto_anterior.toFixed(2)}
-                          </span>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs text-stone-500 wrap-break-word">
+                          <span className="font-bold text-stone-700">S/ {h.monto_anterior.toFixed(2)}</span>
                           {" → "}
-                          <span
-                            className={`font-bold ${subio ? "text-orange-600" : "text-blue-600"}`}
-                          >
+                          <span className={`font-bold ${subio ? "text-orange-600" : "text-blue-600"}`}>
                             S/ {h.monto_nuevo.toFixed(2)}
                           </span>
                         </p>
-                        <p className="text-[10px] text-stone-400">
+                        <p className="text-[10px] text-stone-400 wrap-break-word">
                           {h.registrado_por} · {formatFecha(h.fecha)}
                         </p>
                       </div>
-                      <span
-                        className={`text-xs font-black shrink-0 ${subio ? "text-orange-500" : "text-blue-500"}`}
-                      >
-                        {subio ? "+" : "-"}S/{" "}
-                        {Math.abs(h.monto_nuevo - h.monto_anterior).toFixed(2)}
+                      <span className={`text-xs font-black shrink-0 ${subio ? "text-orange-500" : "text-blue-500"}`}>
+                        {subio ? "+" : "-"}S/ {Math.abs(h.monto_nuevo - h.monto_anterior).toFixed(2)}
                       </span>
                     </div>
                   );
@@ -148,7 +124,7 @@ export default function MovimientoEventoDetalle({
           )}
 
           {/* Buscador */}
-          <div className="relative">
+          <div className="relative shrink-0">
             <input
               type="text"
               value={busqueda}
@@ -156,20 +132,20 @@ export default function MovimientoEventoDetalle({
               placeholder="Buscar por nombre, código o hijo..."
               className="w-full h-10 pl-9 pr-4 bg-white border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 placeholder:text-stone-300"
             />
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300"
-            />
+            <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300" />
           </div>
-          {/* Lista por padre */}
-          <div className="flex flex-col gap-2">
-            {padresFiltrados.map((p) => (
-              <FilaPadreMovimiento
-                key={p.padre_id}
-                p={p}
-                precioHistorial={data.precio_historial ?? []} // ← pasar historial
-              />
-            ))}
+
+          {/* Lista por padre — scrollable */}
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+            <div className="flex flex-col gap-2 pb-2">
+              {padresFiltrados.map((p) => (
+                <FilaPadreMovimiento
+                  key={p.padre_id}
+                  p={p}
+                  precioHistorial={data.precio_historial ?? []}
+                />
+              ))}
+            </div>
           </div>
         </>
       )}

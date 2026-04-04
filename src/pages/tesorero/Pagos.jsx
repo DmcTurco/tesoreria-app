@@ -66,10 +66,10 @@ export default function Pagos() {
   );
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between shrink-0">
         <div>
           <h1 className="text-xl font-black text-stone-800">Abonos</h1>
           <p className="text-sm text-stone-400">
@@ -84,10 +84,10 @@ export default function Pagos() {
         </button>
       </div>
 
-      {error && <ErrorBanner msg={error} />}
+      {error && <div className="shrink-0"><ErrorBanner msg={error} /></div>}
 
       {/* Buscador + filtro */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 shrink-0">
         <div className="relative flex-1">
           <Search
             size={14}
@@ -111,26 +111,28 @@ export default function Pagos() {
         </select>
       </div>
 
-      {/* Lista agrupada por padre */}
-      <div className="flex flex-col gap-3">
-        {loading || loadingPadres ? (
-          <div className="flex justify-center py-10">
-            <Loader2 size={24} className="text-amber-400 animate-spin" />
-          </div>
-        ) : agrupadosPorPadre.length === 0 ? (
-          <p className="text-center text-stone-400 text-sm py-10">
-            Sin resultados
-          </p>
-        ) : (
-          agrupadosPorPadre.map(({ padre, abonos }) => (
-            <GrupoPadre
-              key={padre.id}
-              padre={padre}
-              abonos={abonos}
-              handleAnular={handleAnular}
-            />
-          ))
-        )}
+      {/* Lista agrupada por padre — scrollable */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
+        <div className="flex flex-col gap-3 pb-2">
+          {loading || loadingPadres ? (
+            <div className="flex justify-center py-10">
+              <Loader2 size={24} className="text-amber-400 animate-spin" />
+            </div>
+          ) : agrupadosPorPadre.length === 0 ? (
+            <p className="text-center text-stone-400 text-sm py-10">
+              Sin resultados
+            </p>
+          ) : (
+            agrupadosPorPadre.map(({ padre, abonos }) => (
+              <GrupoPadre
+                key={padre.id}
+                padre={padre}
+                abonos={abonos}
+                handleAnular={handleAnular}
+              />
+            ))
+          )}
+        </div>
       </div>
 
       {/* Modal registrar abono */}
@@ -173,8 +175,8 @@ function GrupoPadre({ padre, abonos, handleAnular }) {
         <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center font-black text-amber-700 text-sm shrink-0">
           {padre.nombre[0]}
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-stone-700 truncate">
+        <div className="flex-1 min-w-0 overflow-hidden">
+          <p className="text-sm font-bold text-stone-700 line-clamp-2 wrap-break-word">
             {padre.nombre}
           </p>
           <p className="text-xs text-stone-400">{padre.codigo}</p>

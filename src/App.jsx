@@ -13,7 +13,8 @@ import Pagos        from "./pages/tesorero/Pagos";
 import Movimientos  from "./pages/tesorero/Movimientos";
 import Eventos      from "./pages/tesorero/Eventos";
 import Multas       from "./pages/tesorero/Multas";
-import Presupuesto  from "./pages/tesorero/Presupuesto";
+import Presupuesto       from "./pages/tesorero/Presupuesto";
+import ExportarImportar  from "./pages/tesorero/ExportarImportar";
 
 import TablaComparativa from "./components/TablaComparativa";
 import ResumenProfe from "./pages/profesora/ResumenProfe";
@@ -51,6 +52,7 @@ function App() {
           <Route path="eventos"       element={<Eventos />} />
           <Route path="multas"        element={<Multas />} />
           <Route path="presupuesto"   element={<Presupuesto />} />
+          <Route path="exportar"      element={<ExportarImportar />} />
         </Route>
 
         {/* ── Profesora ── */}

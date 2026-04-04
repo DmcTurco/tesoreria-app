@@ -5,6 +5,7 @@ export const useMovimientos = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [movimientos, setMovimientos] = useState([]);
+    const [totalRegistros, setTotalRegistros] = useState(0);
     const [totalIngresos, setTotalIngresos] = useState(0);
     const [totalEgresos, setTotalEgresos] = useState(0);
     const [saldo, setSaldo] = useState(0);
@@ -19,12 +20,12 @@ export const useMovimientos = () => {
      * @param {string|null} params.fecha_inicio - YYYY-MM-DD
      * @param {string|null} params.fecha_fin    - YYYY-MM-DD
      */
-    const getMovimientos = useCallback(async ({ tipo = null, categoria = null, fecha_inicio = null, fecha_fin = null } = {}) => {
+    const getMovimientos = useCallback(async ({ tipo = null, categoria = null, fecha_inicio = null, fecha_fin = null, page = 1, per_page = 5 } = {}) => {
         try {
             setLoading(true);
             setError(null);
 
-            const params = {};
+            const params = { page, per_page };
             if (tipo !== null) params.tipo = tipo;
             if (categoria !== null) params.categoria = categoria;
             if (fecha_inicio !== null) params.fecha_inicio = fecha_inicio;
@@ -32,8 +33,9 @@ export const useMovimientos = () => {
 
             const response = await api.get("/movimientos", { params });
 
-            // El backend devuelve { data, total_ingresos, total_egresos, saldo }
+            // El backend devuelve { data, total, total_ingresos, total_egresos, saldo }
             setMovimientos(response.data ?? []);
+            setTotalRegistros(response.total ?? 0);
             setTotalIngresos(response.total_ingresos ?? 0);
             setTotalEgresos(response.total_egresos ?? 0);
             setSaldo(response.saldo ?? 0);
@@ -109,6 +111,7 @@ export const useMovimientos = () => {
         loading,
         error,
         movimientos,
+        totalRegistros,
         totalIngresos,
         totalEgresos,
         saldo,

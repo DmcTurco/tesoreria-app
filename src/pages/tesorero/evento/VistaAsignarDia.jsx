@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ArrowLeft, Loader2, Check, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Check, Search, Users } from "lucide-react";
 import { usePadres } from "@/hook/usePadres";
 import { formatFecha } from "../../../utils/utility";
 import useApi from "@/hook/useApi";
@@ -17,7 +17,11 @@ export default function VistaAsignarDia({ evento, fecha, yaAsignados, faltante, 
     if (yaAsignados.includes(id)) return;
     setSel((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else if (next.size < faltante) {
+        next.add(id);
+      }
       return next;
     });
   };
@@ -48,10 +52,10 @@ export default function VistaAsignarDia({ evento, fecha, yaAsignados, faltante, 
   );
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
 
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="shrink-0 flex items-center gap-3">
         <button
           onClick={onBack}
           className="w-9 h-9 rounded-xl bg-stone-100 hover:bg-stone-200 flex items-center justify-center transition-colors shrink-0"
@@ -67,7 +71,7 @@ export default function VistaAsignarDia({ evento, fecha, yaAsignados, faltante, 
       </div>
 
       {/* Buscador */}
-      <div className="relative">
+      <div className="shrink-0 relative">
         <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
         <input
           value={search}
@@ -79,7 +83,7 @@ export default function VistaAsignarDia({ evento, fecha, yaAsignados, faltante, 
       </div>
 
       {/* Contador */}
-      <div className="flex items-center justify-between -mt-2 px-1">
+      <div className="shrink-0 flex items-center justify-between -mt-2 px-1">
         <p className="text-[10px] text-stone-400">{sel.size}/{faltante} seleccionado(s)</p>
         {sel.size > 0 && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
@@ -88,24 +92,29 @@ export default function VistaAsignarDia({ evento, fecha, yaAsignados, faltante, 
         )}
       </div>
 
-      {/* Lista */}
-      <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-        {loading ? (
-          <div className="flex justify-center py-10">
-            <Loader2 size={20} className="text-amber-400 animate-spin" />
-          </div>
-        ) : disponibles.length === 0 ? (
-          <p className="text-center text-stone-400 text-sm py-10">Sin padres disponibles</p>
-        ) : (
-          <div className="divide-y divide-stone-50">
-            {disponibles.map((p) => {
+      {/* Lista — scrollable */}
+      <div className="flex-1 min-h-0 rounded-2xl border border-stone-100 overflow-hidden">
+        <div className="h-full overflow-y-auto overflow-x-hidden bg-white divide-y divide-stone-50">
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <Loader2 size={20} className="text-amber-400 animate-spin" />
+            </div>
+          ) : disponibles.length === 0 ? (
+            <div className="flex flex-col items-center py-10 gap-2">
+              <Users size={28} className="text-stone-200" />
+              <p className="text-sm text-stone-300 font-medium">Sin padres disponibles</p>
+            </div>
+          ) : (
+            disponibles.map((p) => {
               const checked = sel.has(p.id);
+              const lleno = sel.size >= faltante && !checked;
               return (
                 <div
                   key={p.id}
-                  onClick={() => toggle(p.id)}
-                  className={`flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors
-                    ${checked ? "bg-amber-50" : "hover:bg-stone-50"}`}
+                  onClick={() => !lleno && toggle(p.id)}
+                  className={`flex items-center gap-3 px-4 py-3 transition-colors
+                    ${lleno ? "opacity-40 cursor-not-allowed" : "cursor-pointer"}
+                    ${checked ? "bg-amber-50" : !lleno ? "hover:bg-stone-50" : ""}`}
                 >
                   {/* Checkbox */}
                   <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all
@@ -121,22 +130,22 @@ export default function VistaAsignarDia({ evento, fecha, yaAsignados, faltante, 
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-stone-700 truncate">{p.nombre}</p>
-                    <p className="text-xs text-stone-400">{p.hijo} · {p.grado}</p>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-sm font-semibold text-stone-700 line-clamp-2 wrap-break-word">{p.nombre}</p>
+                    <p className="text-xs text-stone-400 wrap-break-word">{p.hijo} · {p.grado}</p>
                   </div>
                 </div>
               );
-            })}
-          </div>
-        )}
+            })
+          )}
+        </div>
       </div>
 
-      {/* Botón guardar */}
+      {/* Botón guardar — siempre al fondo */}
       <button
         onClick={handleSave}
         disabled={saving || sel.size === 0}
-        className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold
+        className="shrink-0 w-full h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold
           rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
       >
         {saving

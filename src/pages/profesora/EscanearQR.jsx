@@ -7,10 +7,9 @@ import {
   RefreshCw,
   Camera,
   Search,
-  User,
 } from "lucide-react";
 import { useEventos } from "../../hook/useEventos";
-import { EVENTO_ESTADO, EVENTO_TIPO_LABEL } from "../../constants/estados";
+import { EVENTO_ESTADO, EVENTO_TIPO, EVENTO_TIPO_LABEL } from "../../constants/estados";
 import useApi from "../../hook/useApi";
 
 export default function EscanearQR() {
@@ -32,6 +31,7 @@ export default function EscanearQR() {
 
   const eventosHoy = eventos.filter((e) => {
     if (e.estado === EVENTO_ESTADO.CERRADO) return false;
+    if (e.tipo === EVENTO_TIPO.CUOTA) return false;
     const fi = e.fecha_inicio?.slice(0, 10);
     const ff = e.fecha_fin?.slice(0, 10);
     if (fi > hoy) return false;
@@ -140,17 +140,18 @@ export default function EscanearQR() {
   const eventoSeleccionado = eventosHoy.find((e) => String(e.id) === eventoId);
 
   return (
-    <div className="flex flex-col gap-5">
-      <div>
-        <h1 className="text-xl font-black text-stone-800">
-          Registrar asistencia
-        </h1>
+    // h calculado: 100dvh - header mobile (3.5rem) - bottom nav (5rem) - padding wrapper (3rem) = 11.5rem
+    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
+
+      {/* Header */}
+      <div className="shrink-0">
+        <h1 className="text-xl font-black text-stone-800">Registrar asistencia</h1>
         <p className="text-sm text-stone-400">Por QR o búsqueda manual</p>
       </div>
 
       {/* Sin eventos */}
       {eventosHoy.length === 0 && (
-        <div className="bg-white rounded-2xl border border-stone-100 flex flex-col items-center py-10 gap-2">
+        <div className="shrink-0 bg-white rounded-2xl border border-stone-100 flex flex-col items-center py-10 gap-2">
           <QrCode size={32} className="text-stone-200" />
           <p className="text-stone-400 text-sm">Sin eventos activos hoy</p>
         </div>
@@ -158,7 +159,7 @@ export default function EscanearQR() {
 
       {/* Evento único — mostrar como badge */}
       {eventosHoy.length === 1 && eventoSeleccionado && (
-        <div className="bg-teal-50 border border-teal-100 rounded-2xl px-4 py-3 flex items-center gap-3">
+        <div className="shrink-0 bg-teal-50 border border-teal-100 rounded-2xl px-4 py-3 flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg bg-teal-100 flex items-center justify-center shrink-0">
             <QrCode size={15} className="text-teal-600" />
           </div>
@@ -175,7 +176,7 @@ export default function EscanearQR() {
 
       {/* Selector si hay más de 1 */}
       {eventosHoy.length > 1 && (
-        <div className="flex flex-col gap-1.5">
+        <div className="shrink-0 flex flex-col gap-1.5">
           <label className="text-xs font-bold text-stone-600">
             Selecciona el evento
           </label>
@@ -198,10 +199,10 @@ export default function EscanearQR() {
         </div>
       )}
 
-      {/* Toggle QR / Manual */}
+      {/* Toggle QR / Manual + contenido */}
       {eventoId && (
-        <>
-          <div className="flex bg-stone-100 rounded-xl p-1 gap-1">
+        <div className="flex-1 min-h-0 flex flex-col gap-3 overflow-hidden">
+          <div className="shrink-0 flex bg-stone-100 rounded-xl p-1 gap-1">
             <button
               onClick={() => {
                 setModo("qr");
@@ -227,7 +228,7 @@ export default function EscanearQR() {
 
           {/* ── Modo QR ── */}
           {modo === "qr" && (
-            <>
+            <div className="flex-1 min-h-0 overflow-y-auto">
               {/* Pedir permiso */}
               {permiso === null && (
                 <div className="bg-white rounded-2xl border border-stone-100 px-5 py-8 flex flex-col items-center gap-4">
@@ -260,10 +261,7 @@ export default function EscanearQR() {
               {/* Cámara activa */}
               {permiso === "granted" && (
                 <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-                  <div
-                    className="relative bg-stone-900"
-                    style={{ minHeight: 300 }}
-                  >
+                  <div className="relative bg-stone-900" style={{ minHeight: 300 }}>
                     <div id="qr-reader" style={{ width: "100%" }} />
                     {!scanning && !resultado && (
                       <div className="absolute inset-0 flex flex-col items-center justify-center gap-4">
@@ -287,9 +285,7 @@ export default function EscanearQR() {
                   </div>
                   {camError && (
                     <div className="px-5 py-3 bg-red-50 border-t border-red-100">
-                      <p className="text-xs text-red-500 font-medium">
-                        {camError}
-                      </p>
+                      <p className="text-xs text-red-500 font-medium">{camError}</p>
                     </div>
                   )}
                   <Resultado resultado={resultado} onReiniciar={reiniciar} />
@@ -310,15 +306,10 @@ export default function EscanearQR() {
                     <span className="font-bold">iPhone:</span> Configuración →
                     Safari → Cámara → Permitir
                   </p>
-                  <p className="text-xs text-stone-400">
-                    Después recarga la página.
-                  </p>
+                  <p className="text-xs text-stone-400">Después recarga la página.</p>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        setPermiso(null);
-                        setCamError(null);
-                      }}
+                      onClick={() => { setPermiso(null); setCamError(null); }}
                       className="flex-1 h-9 bg-teal-500 hover:bg-teal-600 text-white text-xs font-bold rounded-xl transition-colors"
                     >
                       Reintentar
@@ -332,7 +323,7 @@ export default function EscanearQR() {
                   </div>
                 </div>
               )}
-            </>
+            </div>
           )}
 
           {/* ── Modo Manual ── */}
@@ -345,7 +336,7 @@ export default function EscanearQR() {
               onReiniciar={() => setResultado(null)}
             />
           )}
-        </>
+        </div>
       )}
     </div>
   );
@@ -366,7 +357,7 @@ function ModoManual({ eventoId, fecha, onRegistrar, resultado, onReiniciar }) {
       .catch(() => setPadres([]))
       .finally(() => setLoading(false));
   }, [eventoId]);
-  console.log(padres);
+
   const filtrados = padres.filter((ep) => {
     if (ep.estado === 1) return false; // ya presente
     const nombre = ep.padre?.nombre?.toLowerCase() ?? "";
@@ -376,6 +367,10 @@ function ModoManual({ eventoId, fecha, onRegistrar, resultado, onReiniciar }) {
   const handleMarcar = async (ep) => {
     setMarcando(ep.padre_id);
     await onRegistrar(ep.padre_id, ep.padre?.nombre);
+    // Marcar localmente para que desaparezca de la lista al volver
+    setPadres((prev) =>
+      prev.map((p) => p.padre_id === ep.padre_id ? { ...p, estado: 1 } : p)
+    );
     setMarcando(null);
   };
 
@@ -384,8 +379,9 @@ function ModoManual({ eventoId, fecha, onRegistrar, resultado, onReiniciar }) {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
-      <div className="px-4 py-3 border-b border-stone-50">
+    <div className="flex-1 min-h-0 flex flex-col bg-white rounded-2xl border border-stone-100 overflow-hidden">
+      {/* Buscador */}
+      <div className="shrink-0 px-4 py-3 border-b border-stone-50">
         <div className="relative">
           <Search
             size={15}
@@ -400,7 +396,8 @@ function ModoManual({ eventoId, fecha, onRegistrar, resultado, onReiniciar }) {
         </div>
       </div>
 
-      <div className="divide-y divide-stone-50 max-h-72 overflow-y-auto">
+      {/* Lista — ocupa el espacio restante */}
+      <div className="flex-1 min-h-0 overflow-y-auto divide-y divide-stone-50">
         {loading ? (
           <div className="flex justify-center py-8">
             <Loader2 size={22} className="text-teal-400 animate-spin" />
@@ -423,18 +420,18 @@ function ModoManual({ eventoId, fecha, onRegistrar, resultado, onReiniciar }) {
                     .join("") ?? "?"}
                 </span>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-stone-700 truncate">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-sm font-semibold text-stone-700 line-clamp-2 wrap-break-word">
                   {ep.padre?.nombre ?? "—"}
                 </p>
-                <p className="text-xs text-stone-400">
+                <p className="text-xs text-stone-400 wrap-break-word">
                   {ep.padre?.grado} · {ep.padre?.hijo}
                 </p>
               </div>
               <button
                 onClick={() => handleMarcar(ep)}
                 disabled={marcando === ep.padre_id}
-                className="w-8 h-8 rounded-full bg-teal-50 hover:bg-teal-100 flex items-center justify-center transition-colors disabled:opacity-50"
+                className="w-8 h-8 rounded-full bg-teal-50 hover:bg-teal-100 flex items-center justify-center transition-colors disabled:opacity-50 shrink-0"
                 title="Marcar presente"
               >
                 {marcando === ep.padre_id ? (
@@ -464,9 +461,7 @@ function Resultado({ resultado, onReiniciar }) {
         <XCircle size={44} className="text-red-400" />
       )}
       {resultado.nombre && (
-        <p className="text-base font-black text-stone-800">
-          {resultado.nombre}
-        </p>
+        <p className="text-base font-black text-stone-800">{resultado.nombre}</p>
       )}
       <p
         className={`text-sm font-semibold text-center ${resultado.ok ? "text-emerald-700" : "text-red-500"}`}

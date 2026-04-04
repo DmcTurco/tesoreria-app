@@ -8,6 +8,7 @@ import {
   CalendarDays,
   AlertTriangle,
   PiggyBank,
+  FileDown,
   LogOut,
   Menu,
   X,
@@ -24,6 +25,7 @@ const NAV_TESORERO = [
   { key: "eventos", label: "Eventos", icon: CalendarDays },
   { key: "multas", label: "Multas", icon: AlertTriangle },
   { key: "presupuesto", label: "Presupuesto", icon: PiggyBank },
+  { key: "exportar",    label: "Exportar",    icon: FileDown },
 ];
 
 const NAV_PROFESORA = [

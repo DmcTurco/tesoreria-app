@@ -7,6 +7,7 @@ import useApi from "../../hook/useApi";
 import {
   MULTA_ESTADO, MULTA_ESTADO_LABEL,
   EVENTO_PADRE_ESTADO, EVENTO_PADRE_ESTADO_LABEL,
+  EVENTO_TIPO,
 } from "../../constants/estados";
 
 const MULTA_COLORS = {
@@ -230,7 +231,11 @@ export default function MiEstado() {
                 : ep.estado === 4 ? "bg-stone-100 text-stone-400"
                 : "bg-yellow-50 text-yellow-700"}`}
               >
-                {EVENTO_PADRE_ESTADO_LABEL[ep.estado]}
+                {ep.estado === 1 && ep.evento?.tipo === EVENTO_TIPO.CUOTA
+                  ? "Pagado"
+                  : ep.estado === 1
+                  ? "Presente"
+                  : EVENTO_PADRE_ESTADO_LABEL[ep.estado]}
               </span>
             </div>
           ))
@@ -245,24 +250,47 @@ export default function MiEstado() {
         {abonos.length === 0 ? (
           <p className="text-center text-stone-300 text-sm py-4">Sin abonos registrados</p>
         ) : (
-          abonos.map((a) => (
-            <div key={a.id} className="flex items-center gap-3 py-2.5 border-b border-stone-50 last:border-0">
-              <div className="flex-1 min-w-0 flex items-center gap-2">
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ABONO_TIPO_COLORS[a.tipo_deuda] ?? "bg-stone-100 text-stone-500"}`}>
-                  {a.tipo_deuda === "multa" ? "Multa" : "Cobro"}
-                </span>
-                <p className="text-xs text-stone-400">{formatFecha(a.fecha)}</p>
+          abonos.map((a) => {
+            const monto     = Number(a.monto);
+            const montoNeto = a.monto_neto != null ? Number(a.monto_neto) : null;
+            const devolucion = montoNeto != null && montoNeto < monto
+              ? monto - montoNeto
+              : null;
+            const total = devolucion != null ? montoNeto : monto;
+            return (
+              <div key={a.id} className="flex items-start gap-3 py-2.5 border-b border-stone-50 last:border-0">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${ABONO_TIPO_COLORS[a.tipo_deuda] ?? "bg-stone-100 text-stone-500"}`}>
+                      {a.tipo_deuda === "multa" ? "Multa" : "Cuota"}
+                    </span>
+                    <p className="text-xs text-stone-400">{formatFecha(a.fecha)}</p>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full
+                      ${Number(a.estado) === 0 ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-400"}`}
+                    >
+                      {Number(a.estado) === 0 ? "Activo" : "Anulado"}
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-stone-400">Abono</span>
+                      <span className="font-semibold text-stone-700">S/ {monto.toFixed(2)}</span>
+                    </div>
+                    {devolucion != null && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-blue-400">Devolución</span>
+                        <span className="font-semibold text-blue-500">- S/ {devolucion.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-xs border-t border-stone-50 pt-0.5 mt-0.5">
+                      <span className="font-bold text-stone-500">Total</span>
+                      <span className="font-black text-emerald-600">S/ {Number(total).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-sm font-bold text-emerald-600 shrink-0">
-                S/ {Number(a.monto).toFixed(2)}
-              </p>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0
-                ${Number(a.estado) === 0 ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-400"}`}
-              >
-                {Number(a.estado) === 0 ? "Activo" : "Anulado"}
-              </span>
-            </div>
-          ))
+            );
+          })
         )}
       </SeccionCard>
 

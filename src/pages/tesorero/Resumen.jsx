@@ -109,20 +109,20 @@ export default function Resumen() {
             <p className="text-center text-stone-400 text-sm py-8">Sin movimientos aún</p>
           )}
           {(resumen?.ultimos_movimientos ?? []).map((m) => (
-            <div key={m.id} className="flex items-center gap-3 px-5 py-3">
+            <div key={m.id} className="flex items-center gap-3 px-5 py-3 overflow-hidden">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0
                 ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-50" : "bg-red-50"}`}>
                 {m.tipo === MOVIMIENTO_TIPO.INGRESO
                   ? <TrendingUp size={14} className="text-emerald-500" />
                   : <TrendingDown size={14} className="text-red-400" />}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-stone-700 truncate">{m.descripcion}</p>
-                <p className="text-xs text-stone-400">{m.categoria} · {formatFecha(m.fecha)}</p>
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <p className="text-sm font-semibold text-stone-700 line-clamp-2 wrap-break-word">{m.descripcion}</p>
+                <p className="text-xs text-stone-400 wrap-break-word">{m.categoria} · {formatFecha(m.fecha)}</p>
               </div>
-              <span className={`text-sm font-bold shrink-0
+              <span className={`text-sm font-bold shrink-0 max-w-24 wrap-break-word
                 ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}>
-                {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/ {Number(m.monto).toFixed(2)}
+                {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{Number(m.monto).toFixed(2)}
               </span>
             </div>
           ))}

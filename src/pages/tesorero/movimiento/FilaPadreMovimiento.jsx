@@ -24,9 +24,9 @@ export default function FilaPadreMovimiento({ p, precioHistorial }) {
                 onClick={() => setPadreAbierto(!padreAbierto)}
             >
                 <div className={`w-2 h-2 rounded-full shrink-0 ${alDia ? "bg-emerald-400" : "bg-red-400"}`} />
-                <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-stone-700 truncate">{p.nombre}</p>
-                    <p className="text-[10px] text-stone-400">{p.codigo} · {p.hijo} · {p.grado}</p>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-xs font-bold text-stone-700 line-clamp-2 wrap-break-word">{p.nombre}</p>
+                    <p className="text-[10px] text-stone-400 wrap-break-word">{p.codigo} · {p.hijo} · {p.grado}</p>
                 </div>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0
                     ${alDia ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-500"}`}>

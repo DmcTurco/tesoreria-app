@@ -9,15 +9,18 @@ import {
   ChevronRight,
   ChevronLeft,
   Users,
+  X,
 } from "lucide-react";
 import { useMovimientos } from "../../hook/useMovimientos";
 import { useEventos } from "../../hook/useEventos";
 import {
   MOVIMIENTO_TIPO,
   MOVIMIENTO_CATEGORIA_LABEL,
+  MOVIMIENTO_CATEGORIA,
 } from "../../constants/estados";
-import { formatFecha, Toast } from "../../utils/utility";
+import { formatFecha, Toast, today } from "../../utils/utility";
 import MovimientoEventoDetalle from "./movimiento/MovimientoEventoDetalle";
+import useApi from "../../hook/useApi";
 
 export default function Movimientos() {
   const [filtroTipo, setFiltroTipo] = useState("");
@@ -291,28 +294,39 @@ export default function Movimientos() {
                     </div>
 
                     {e.resumen_pagos && (
-                      <div className="ml-12 flex gap-3">
-                        <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
-                          <p className="text-[10px] text-stone-400">Padres</p>
-                          <p className="text-xs font-black text-stone-700">
-                            {e.resumen_pagos.pagados}
-                            <span className="font-normal text-stone-400">
-                              /{e.resumen_pagos.total_padres}
-                            </span>
-                          </p>
+                      <div className="ml-12 flex flex-col gap-1.5">
+                        <div className="flex gap-2">
+                          <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
+                            <p className="text-[10px] text-stone-400">Padres</p>
+                            <p className="text-xs font-black text-stone-700">
+                              {e.resumen_pagos.pagados}
+                              <span className="font-normal text-stone-400">/{e.resumen_pagos.total_padres}</span>
+                            </p>
+                          </div>
+                          <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
+                            <p className="text-[10px] text-emerald-600">Recaudado</p>
+                            <p className="text-xs font-black text-emerald-700">
+                              S/ {Number(e.resumen_pagos.monto_recaudado).toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
+                            <p className="text-[10px] text-amber-600">Esperado</p>
+                            <p className="text-xs font-black text-amber-700">
+                              S/ {Number(e.resumen_pagos.monto_esperado).toFixed(2)}
+                            </p>
+                          </div>
                         </div>
-                        <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
-                          <p className="text-[10px] text-emerald-600">Recaudado</p>
-                          <p className="text-xs font-black text-emerald-700">
-                            S/ {Number(e.resumen_pagos.monto_recaudado).toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
-                          <p className="text-[10px] text-amber-600">Esperado</p>
-                          <p className="text-xs font-black text-amber-700">
-                            S/ {Number(e.resumen_pagos.monto_esperado).toFixed(2)}
-                          </p>
-                        </div>
+                        {e.resumen_pagos.monto_entregado > 0 && (
+                          <div className="flex items-center justify-between bg-red-50 rounded-xl px-3 py-2">
+                            <div className="flex items-center gap-1.5">
+                              <TrendingDown size={13} className="text-red-400 shrink-0" />
+                              <p className="text-[10px] text-red-500 font-bold">Entregado / Gastos</p>
+                            </div>
+                            <p className="text-xs font-black text-red-500">
+                              - S/ {Number(e.resumen_pagos.monto_entregado).toFixed(2)}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </button>
@@ -334,6 +348,186 @@ export default function Movimientos() {
           onError={(msg) => showToast(msg, "err")}
         />
       )}
+    </div>
+  );
+}
+
+// ── Modal nuevo movimiento manual ─────────────────────────────────────────────
+function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
+  const [tipo,        setTipo]        = useState(MOVIMIENTO_TIPO.EGRESO);
+  const [monto,       setMonto]       = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  const [categoria,   setCategoria]   = useState(String(MOVIMIENTO_CATEGORIA.OTRO));
+  const [fecha,       setFecha]       = useState(today());
+  const [eventoId,    setEventoId]    = useState("");
+  const [eventos,     setEventos]     = useState([]);
+  const [saving,      setSaving]      = useState(false);
+  const api = useApi();
+
+  useEffect(() => {
+    api.get("/eventos")
+      .then((data) => setEventos(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!monto || !descripcion || !fecha) return;
+    setSaving(true);
+    try {
+      await createMovimiento({
+        tipo:        Number(tipo),
+        monto:       Number(monto),
+        descripcion: descripcion.trim(),
+        categoria:   Number(categoria),
+        fecha,
+        evento_id:   eventoId !== "" ? Number(eventoId) : null,
+      });
+      onSaved();
+    } catch (err) {
+      onError(err.message ?? "Error al registrar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden max-h-[90dvh] flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 shrink-0">
+          <p className="text-sm font-black text-stone-800">Nuevo movimiento</p>
+          <button onClick={onClose} className="p-1 hover:bg-stone-100 rounded-lg transition-colors">
+            <X size={18} className="text-stone-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-4 overflow-y-auto">
+          {/* Tipo toggle */}
+          <div className="flex bg-stone-100 rounded-xl p-1 gap-1">
+            {[
+              [MOVIMIENTO_TIPO.INGRESO, "Ingreso"],
+              [MOVIMIENTO_TIPO.EGRESO,  "Egreso"],
+            ].map(([v, l]) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setTipo(v)}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
+                  ${tipo === v
+                    ? v === MOVIMIENTO_TIPO.INGRESO
+                      ? "bg-white text-emerald-600 shadow-sm"
+                      : "bg-white text-red-500 shadow-sm"
+                    : "text-stone-400"}`}
+              >
+                {l}
+              </button>
+            ))}
+          </div>
+
+          {/* Monto */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Monto (S/)</label>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              value={monto}
+              onChange={(e) => setMonto(e.target.value)}
+              placeholder="0.00"
+              required
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Descripción */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Descripción</label>
+            <input
+              type="text"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              placeholder="Ej: Compra de útiles"
+              required
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Categoría */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Categoría</label>
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors bg-white"
+            >
+              {Object.entries(MOVIMIENTO_CATEGORIA_LABEL).map(([k, l]) => (
+                <option key={k} value={k}>{l}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Evento relacionado (opcional) */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">
+              Evento relacionado
+              <span className="font-normal text-stone-400 ml-1">(opcional)</span>
+            </label>
+            <select
+              value={eventoId}
+              onChange={(e) => setEventoId(e.target.value)}
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors bg-white"
+            >
+              <option value="">— Sin evento —</option>
+              {eventos.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.titulo}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Fecha */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
+              required
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Botones */}
+          <div className="flex gap-2 pt-1">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 h-10 rounded-xl border border-stone-200 text-sm font-bold
+                text-stone-500 hover:bg-stone-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className={`flex-1 h-10 rounded-xl text-sm font-bold text-white transition-colors
+                flex items-center justify-center gap-2 disabled:opacity-50
+                ${tipo === MOVIMIENTO_TIPO.INGRESO
+                  ? "bg-emerald-500 hover:bg-emerald-600"
+                  : "bg-red-500 hover:bg-red-600"}`}
+            >
+              {saving
+                ? <Loader2 size={15} className="animate-spin" />
+                : tipo === MOVIMIENTO_TIPO.INGRESO ? "Registrar ingreso" : "Registrar egreso"}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

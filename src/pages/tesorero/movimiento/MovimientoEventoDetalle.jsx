@@ -5,6 +5,7 @@ import {
   TrendingUp,
   TrendingDown,
   Search,
+  Receipt,
 } from "lucide-react";
 import { formatFecha } from "../../../utils/utility";
 import FilaPadreMovimiento from "./FilaPadreMovimiento";
@@ -70,18 +71,40 @@ export default function MovimientoEventoDetalle({
       ) : !data ? null : (
         <>
           {/* Resumen del evento */}
-          <div className="grid grid-cols-3 gap-3 shrink-0">
-            <div className="bg-stone-50 rounded-2xl p-3 text-center min-w-0">
-              <p className="text-lg font-black text-stone-700">{data.evento.total_padres}</p>
-              <p className="text-[11px] text-stone-400">Total</p>
+          <div className="flex flex-col gap-2 shrink-0">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-stone-50 rounded-2xl p-3 text-center min-w-0">
+                <p className="text-lg font-black text-stone-700">{data.evento.total_padres}</p>
+                <p className="text-[11px] text-stone-400">Total</p>
+              </div>
+              <div className="bg-emerald-50 rounded-2xl p-3 text-center min-w-0">
+                <p className="text-lg font-black text-emerald-700">{data.evento.pagados}</p>
+                <p className="text-[11px] text-emerald-600">Pagados</p>
+              </div>
+              <div className="bg-amber-50 rounded-2xl p-3 text-center min-w-0">
+                <p className="text-lg font-black text-amber-600">{data.evento.pendientes}</p>
+                <p className="text-[11px] text-amber-500">Pendientes</p>
+              </div>
             </div>
-            <div className="bg-emerald-50 rounded-2xl p-3 text-center min-w-0">
-              <p className="text-lg font-black text-emerald-700">{data.evento.pagados}</p>
-              <p className="text-[11px] text-emerald-600">Pagados</p>
-            </div>
-            <div className="bg-red-50 rounded-2xl p-3 text-center min-w-0">
-              <p className="text-lg font-black text-red-500">{data.evento.pendientes}</p>
-              <p className="text-[11px] text-red-400">Pendientes</p>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="bg-teal-50 rounded-2xl p-3 text-center min-w-0">
+                <p className="text-sm font-black text-teal-700">
+                  S/ {Number(data.evento.monto_recaudado ?? 0).toFixed(2)}
+                </p>
+                <p className="text-[11px] text-teal-600">Recaudado</p>
+              </div>
+              <div className="bg-stone-50 rounded-2xl p-3 text-center min-w-0">
+                <p className="text-sm font-black text-stone-600">
+                  S/ {Number(data.evento.monto_esperado ?? 0).toFixed(2)}
+                </p>
+                <p className="text-[11px] text-stone-400">Esperado</p>
+              </div>
+              <div className="bg-red-50 rounded-2xl p-3 text-center min-w-0">
+                <p className="text-sm font-black text-red-500">
+                  S/ {Number(data.evento.monto_entregado ?? 0).toFixed(2)}
+                </p>
+                <p className="text-[11px] text-red-400">Entregado</p>
+              </div>
             </div>
           </div>
 
@@ -119,6 +142,35 @@ export default function MovimientoEventoDetalle({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Gastos del evento */}
+          {data.gastos?.length > 0 && (
+            <div className="shrink-0 bg-white rounded-2xl border border-stone-100 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border-b border-red-100">
+                <Receipt size={14} className="text-red-400" />
+                <p className="text-xs font-bold text-red-600 flex-1">Egresos / Gastos del evento</p>
+                <span className="text-xs font-black text-red-500">
+                  - S/ {data.gastos.reduce((s, g) => s + g.monto, 0).toFixed(2)}
+                </span>
+              </div>
+              <div className="divide-y divide-stone-50">
+                {data.gastos.map((g) => (
+                  <div key={g.id} className="flex items-center gap-3 px-4 py-2.5">
+                    <div className="w-7 h-7 rounded-full bg-red-50 flex items-center justify-center shrink-0">
+                      <TrendingDown size={13} className="text-red-400" />
+                    </div>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className="text-xs font-semibold text-stone-700 line-clamp-1">{g.descripcion}</p>
+                      <p className="text-[10px] text-stone-400">{formatFecha(g.fecha)}{g.registrado_por ? ` · ${g.registrado_por}` : ""}</p>
+                    </div>
+                    <span className="text-xs font-black text-red-500 shrink-0">
+                      - S/ {g.monto.toFixed(2)}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           )}

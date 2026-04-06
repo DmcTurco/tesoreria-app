@@ -1,21 +1,50 @@
 import { useState } from "react";
-import { TrendingUp, TrendingDown, ChevronDown } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronDown, ShieldCheck, X, Loader2 } from "lucide-react";
+import useApi from "../../../hook/useApi";
 
-export default function FilaPadreMovimiento({ p, precioHistorial }) {
-    const [padreAbierto, setPadreAbierto] = useState(false); // ← cerrado por defecto
+export default function FilaPadreMovimiento({ p, precioHistorial, eventoId, onRefresh }) {
+    const [padreAbierto, setPadreAbierto] = useState(false);
     const [verHistorial, setVerHistorial] = useState(false);
+    const [modalExonerar, setModalExonerar] = useState(false);
+    const [motivoExonerar, setMotivoExonerar] = useState("");
+    const [loadingExonerar, setLoadingExonerar] = useState(false);
+    const api = useApi();
 
-    const alDia = p.monto_pagado >= p.monto_asignado;
+    const esExonerado   = p.estado === 4;
+    const esJustificado = p.estado === 3;
+    const alDia    = p.monto_pagado >= p.monto_asignado;
     const pendiente = p.monto_asignado - p.monto_pagado;
+
+    const handleExonerar = async () => {
+        if (!motivoExonerar.trim()) return;
+        setLoadingExonerar(true);
+        try {
+            await api.post(`/eventos/${eventoId}/exonerar-padre`, {
+                padre_id: p.padre_id,
+                motivo_exoneracion: motivoExonerar.trim(),
+            });
+            setModalExonerar(false);
+            setMotivoExonerar("");
+            onRefresh?.();
+        } catch (e) {
+            // error silencioso — el usuario verá que no cambió
+        } finally {
+            setLoadingExonerar(false);
+        }
+    };
 
 	const abonos          = p.movimientos.filter((m) => m.tipo === 0 && !m.anulado && m.categoria === 0);
 	const cobrosExtra     = p.movimientos.filter((m) => m.tipo === 0 && !m.anulado && m.categoria === 3);
 	const abonosAnulados  = p.movimientos.filter((m) => m.tipo === 0 && m.anulado);
 	const devoluciones    = p.movimientos.filter((m) => m.tipo === 1 && m.categoria === 3);
 
-	const totalPagado       = abonos.reduce((s, m) => s + m.monto, 0);
+	const totalPagado = abonos.reduce((s, m) => s + m.monto, 0);
+
+    // Puede exonerar si no está ya exonerado/justificado y no tiene abonos activos vigentes
+    const puedeExonerar = !esExonerado && !esJustificado && abonos.length === 0;
 
     return (
+        <>
         <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
 
             {/* Cabecera padre — clickeable */}
@@ -23,15 +52,30 @@ export default function FilaPadreMovimiento({ p, precioHistorial }) {
                 className="flex items-center gap-2 px-4 py-2.5 bg-stone-50 cursor-pointer"
                 onClick={() => setPadreAbierto(!padreAbierto)}
             >
-                <div className={`w-2 h-2 rounded-full shrink-0 ${alDia ? "bg-emerald-400" : "bg-red-400"}`} />
+                <div className={`w-2 h-2 rounded-full shrink-0 ${
+                    esExonerado || esJustificado ? "bg-stone-300" : alDia ? "bg-emerald-400" : "bg-red-400"
+                }`} />
                 <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-xs font-bold text-stone-700 line-clamp-2 wrap-break-word">{p.nombre}</p>
                     <p className="text-[10px] text-stone-400 wrap-break-word">{p.codigo} · {p.hijo} · {p.grado}</p>
                 </div>
-                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0
-                    ${alDia ? "bg-emerald-100 text-emerald-600" : "bg-red-100 text-red-500"}`}>
-                    {alDia ? "Al día" : `Debe S/ ${pendiente.toFixed(2)}`}
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
+                    esExonerado   ? "bg-stone-100 text-stone-500" :
+                    esJustificado ? "bg-blue-100 text-blue-500"  :
+                    alDia         ? "bg-emerald-100 text-emerald-600" :
+                                    "bg-red-100 text-red-500"
+                }`}>
+                    {esExonerado ? "Exonerado" : esJustificado ? "Justificado" : alDia ? "Al día" : `Debe S/ ${pendiente.toFixed(2)}`}
                 </span>
+                {puedeExonerar && (
+                    <button
+                        onClick={(e) => { e.stopPropagation(); setModalExonerar(true); }}
+                        title="Exonerar"
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-stone-100 hover:bg-amber-100 text-stone-400 hover:text-amber-600 transition-colors shrink-0"
+                    >
+                        <ShieldCheck size={14} />
+                    </button>
+                )}
                 <div className={`w-7 h-7 flex items-center justify-center rounded-full bg-stone-200 transition-transform duration-200 shrink-0 ${padreAbierto ? "rotate-180" : ""}`}>
                     <ChevronDown size={15} className="text-stone-600" />
                 </div>
@@ -231,5 +275,50 @@ export default function FilaPadreMovimiento({ p, precioHistorial }) {
                 </div>
             )}
         </div>
+
+        {/* Modal exonerar */}
+        {modalExonerar && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+                <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden">
+                    <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-100">
+                        <div className="w-8 h-8 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                            <ShieldCheck size={15} className="text-amber-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-black text-stone-800">Exonerar padre</p>
+                            <p className="text-xs text-stone-400 truncate">{p.nombre}</p>
+                        </div>
+                        <button onClick={() => { setModalExonerar(false); setMotivoExonerar(""); }}
+                            className="p-1 hover:bg-stone-100 rounded-lg transition-colors">
+                            <X size={18} className="text-stone-400" />
+                        </button>
+                    </div>
+                    <div className="px-5 py-4 flex flex-col gap-3">
+                        <p className="text-xs text-stone-500">
+                            Al exonerar, este padre no contará en el monto esperado del evento. Esta acción queda registrada.
+                        </p>
+                        <div className="flex flex-col gap-1">
+                            <label className="text-xs font-bold text-stone-600">Motivo *</label>
+                            <textarea
+                                value={motivoExonerar}
+                                onChange={(e) => setMotivoExonerar(e.target.value)}
+                                placeholder="Ej: Realizó la faena físicamente..."
+                                rows={3}
+                                className="w-full border border-stone-200 rounded-xl px-3 py-2 text-sm text-stone-700 outline-none focus:border-amber-400 resize-none"
+                            />
+                        </div>
+                        <button
+                            onClick={handleExonerar}
+                            disabled={!motivoExonerar.trim() || loadingExonerar}
+                            className="w-full py-2.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-bold rounded-xl transition-colors flex items-center justify-center gap-2"
+                        >
+                            {loadingExonerar ? <Loader2 size={15} className="animate-spin" /> : <ShieldCheck size={15} />}
+                            Confirmar exoneración
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
+        </>
     );
 }

@@ -1,15 +1,13 @@
 import { useState } from "react";
 import {
   Database, RefreshCw, AlertTriangle, CheckCircle,
-  Loader2, Terminal, ChevronDown, ChevronUp, Trash2,
+  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench,
 } from "lucide-react";
 import useApi from "../../hook/useApi";
 
 export default function AdminDB() {
   const api = useApi();
 
-  const [modalFresh, setModalFresh] = useState(false);
-  const [confirm,    setConfirm]    = useState("");
 
   return (
     <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
@@ -41,6 +39,21 @@ export default function AdminDB() {
           botonLabel="Ejecutar migrate"
           botonColor="bg-teal-500 hover:bg-teal-600"
           endpoint="/admin/migrate"
+          api={api}
+          confirmar={false}
+        />
+
+        {/* ── Corregir movimientos anulados ── */}
+        <AccionCard
+          icon={<Wrench size={20} className="text-amber-600" />}
+          iconBg="bg-amber-100"
+          titulo="Corregir movimientos anulados"
+          descripcion="Marca como ANULACIÓN los movimientos de ingreso cuyos abonos fueron anulados pero cuya categoría no se actualizó correctamente. Corrige el total de ingresos."
+          etiqueta="Corrección"
+          etiquetaColor="bg-amber-50 text-amber-600"
+          botonLabel="Ejecutar corrección"
+          botonColor="bg-amber-500 hover:bg-amber-600"
+          endpoint="/admin/fix-movimientos-anulados"
           api={api}
           confirmar={false}
         />

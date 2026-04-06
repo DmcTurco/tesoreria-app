@@ -31,18 +31,19 @@ export default function MovimientoEventoDetalle({
         );
       });
 
+  const cargar = async () => {
+    try {
+      setLoading(true);
+      const res = await getEventoMovimientos(evento.id);
+      setData(res);
+    } catch (e) {
+      onToast("Error al cargar movimientos", "err");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const cargar = async () => {
-      try {
-        const res = await getEventoMovimientos(evento.id);
-        setData(res);
-        console.log("movimientos:", res.padres[0]?.movimientos);
-      } catch (e) {
-        onToast("Error al cargar movimientos", "err");
-      } finally {
-        setLoading(false);
-      }
-    };
     cargar();
   }, [evento.id]);
 
@@ -195,6 +196,8 @@ export default function MovimientoEventoDetalle({
                   key={p.padre_id}
                   p={p}
                   precioHistorial={data.precio_historial ?? []}
+                  eventoId={evento.id}
+                  onRefresh={cargar}
                 />
               ))}
             </div>

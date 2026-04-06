@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import ModalRecibosEvento from "../../components/ModalRecibosEvento";
 import {
   Wallet,
   Users,
@@ -197,9 +198,17 @@ export default function ResumenProfe() {
                       <p className="text-sm font-semibold text-stone-700 line-clamp-2 wrap-break-word">
                         {m.descripcion}
                       </p>
-                      <p className="text-xs text-stone-400 wrap-break-word">
-                        {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-stone-400 wrap-break-word">
+                          {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}
+                        </p>
+                        {m.comprobante && (
+                          <a href={m.comprobante} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-0.5 text-[10px] font-bold text-blue-500 hover:text-blue-600 transition-colors">
+                            🔗 Recibo
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <span
                       className={`text-sm font-bold shrink-0 max-w-24 wrap-break-word
@@ -264,9 +273,10 @@ export default function ResumenProfe() {
 
 // ── Tarjeta de evento con historial de precio expandible ──────────────────────
 function EventoCardProfe({ evento }) {
-  const [abierto, setAbierto] = useState(false);
-  const [historial, setHistorial] = useState(null); // null = no cargado aún
-  const [loadingH, setLoadingH] = useState(false);
+  const [abierto,       setAbierto]       = useState(false);
+  const [historial,     setHistorial]     = useState(null);
+  const [loadingH,      setLoadingH]      = useState(false);
+  const [modalRecibos,  setModalRecibos]  = useState(false);
   const api = useApi();
 
   const toggleHistorial = async () => {
@@ -314,29 +324,48 @@ function EventoCardProfe({ evento }) {
 
       {/* Resumen de pagos */}
       {evento.resumen_pagos && (
-        <div className="ml-12 flex gap-3">
-          <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
-            <p className="text-[10px] text-stone-400">Padres</p>
-            <p className="text-xs font-black text-stone-700">
-              {evento.resumen_pagos.pagados}
-              <span className="font-normal text-stone-400">
-                /{evento.resumen_pagos.total_padres}
-              </span>
-            </p>
+        <div className="ml-12 flex flex-col gap-1.5">
+          <div className="flex gap-3">
+            <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
+              <p className="text-[10px] text-stone-400">Padres</p>
+              <p className="text-xs font-black text-stone-700">
+                {evento.resumen_pagos.pagados}
+                <span className="font-normal text-stone-400">/{evento.resumen_pagos.total_padres}</span>
+              </p>
+            </div>
+            <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
+              <p className="text-[10px] text-emerald-600">Recaudado</p>
+              <p className="text-xs font-black text-emerald-700">
+                S/ {Number(evento.resumen_pagos.monto_recaudado).toFixed(2)}
+              </p>
+            </div>
+            <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
+              <p className="text-[10px] text-amber-600">Esperado</p>
+              <p className="text-xs font-black text-amber-700">
+                S/ {Number(evento.resumen_pagos.monto_esperado).toFixed(2)}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
-            <p className="text-[10px] text-emerald-600">Recaudado</p>
-            <p className="text-xs font-black text-emerald-700">
-              S/ {Number(evento.resumen_pagos.monto_recaudado).toFixed(2)}
-            </p>
-          </div>
-          <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
-            <p className="text-[10px] text-amber-600">Esperado</p>
-            <p className="text-xs font-black text-amber-700">
-              S/ {Number(evento.resumen_pagos.monto_esperado).toFixed(2)}
-            </p>
-          </div>
+          {evento.resumen_pagos.monto_entregado > 0 && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setModalRecibos(true); }}
+              className="flex items-center justify-between bg-red-50 hover:bg-red-100 rounded-xl px-3 py-2 w-full transition-colors"
+            >
+              <p className="text-[10px] text-red-500 font-bold">Entregado / Gastos</p>
+              <p className="text-xs font-black text-red-500">
+                - S/ {Number(evento.resumen_pagos.monto_entregado).toFixed(2)}
+              </p>
+            </button>
+          )}
         </div>
+      )}
+
+      {modalRecibos && (
+        <ModalRecibosEvento
+          eventoId={evento.id}
+          titulo={evento.titulo}
+          onClose={() => setModalRecibos(false)}
+        />
       )}
 
       {/* Historial de precio — se carga al expandir */}

@@ -10,6 +10,9 @@ import {
   ChevronLeft,
   Users,
   X,
+  ExternalLink,
+  Pencil,
+  Link,
 } from "lucide-react";
 import { useMovimientos } from "../../hook/useMovimientos";
 import { useEventos } from "../../hook/useEventos";
@@ -21,6 +24,7 @@ import {
 import { formatFecha, Toast, today } from "../../utils/utility";
 import MovimientoEventoDetalle from "./movimiento/MovimientoEventoDetalle";
 import useApi from "../../hook/useApi";
+import ModalRecibosEvento from "../../components/ModalRecibosEvento";
 
 export default function Movimientos() {
   const [filtroTipo, setFiltroTipo] = useState("");
@@ -28,6 +32,9 @@ export default function Movimientos() {
   const PER_PAGE = 10;
   const [tabPrincipal, setTabPrincipal] = useState("todos"); // "todos" | "eventos"
   const [modal, setModal] = useState(false);
+  const [modalEditar,   setModalEditar]   = useState(null);
+  const [modalEliminar, setModalEliminar] = useState(null);
+  const [modalRecibos,  setModalRecibos]  = useState(null); // evento
   const [toast, setToast] = useState(null);
   const [eventoDetalle, setEventoDetalle] = useState(null);
 
@@ -70,10 +77,10 @@ export default function Movimientos() {
     getMovimientos({ tipo: filtroTipo !== "" ? Number(filtroTipo) : null, page, per_page: PER_PAGE });
 
   const handleDelete = async (id) => {
-    if (!confirm("¿Eliminar este movimiento?")) return;
     try {
       await deleteMovimiento(id);
-      showToast("Eliminado");
+      setModalEliminar(null);
+      showToast("Movimiento eliminado");
       reload();
     } catch (e) {
       showToast(e.message ?? "Error", "err");
@@ -210,9 +217,22 @@ export default function Movimientos() {
                       <p className="text-sm font-semibold text-stone-700 line-clamp-2 wrap-break-word">
                         {m.descripcion}
                       </p>
-                      <p className="text-xs text-stone-400 wrap-break-word">
-                        {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-stone-400">
+                          {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}
+                        </p>
+                        {m.comprobante && (
+                          <a
+                            href={m.comprobante}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="flex items-center gap-0.5 text-[10px] font-bold text-blue-500 hover:text-blue-600 transition-colors"
+                          >
+                            <Link size={10} /> Recibo
+                          </a>
+                        )}
+                      </div>
                     </div>
                     <span
                       className={`text-sm font-bold shrink-0 max-w-24 truncate
@@ -220,12 +240,22 @@ export default function Movimientos() {
                     >
                       {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{Number(m.monto).toFixed(2)}
                     </span>
-                    <button
-                      onClick={() => handleDelete(m.id)}
-                      className="text-stone-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
-                    >
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        onClick={() => setModalEditar(m)}
+                        className="p-1.5 rounded-lg text-stone-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={13} />
+                      </button>
+                      <button
+                        onClick={() => setModalEliminar(m)}
+                        className="p-1.5 rounded-lg text-stone-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
                   </div>
                 ))
               )}
@@ -273,10 +303,10 @@ export default function Movimientos() {
               eventos
                 .filter((e) => e.tipo === 3)
                 .map((e) => (
-                  <button
+                  <div
                     key={e.id}
                     onClick={() => setEventoDetalle(e)}
-                    className="w-full flex flex-col gap-2 px-4 py-3 hover:bg-stone-50 transition-colors text-left border-b border-stone-50 last:border-0"
+                    className="w-full flex flex-col gap-2 px-4 py-3 hover:bg-stone-50 transition-colors cursor-pointer border-b border-stone-50 last:border-0"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
@@ -317,7 +347,10 @@ export default function Movimientos() {
                           </div>
                         </div>
                         {e.resumen_pagos.monto_entregado > 0 && (
-                          <div className="flex items-center justify-between bg-red-50 rounded-xl px-3 py-2">
+                          <button
+                            onClick={(ev) => { ev.stopPropagation(); setModalRecibos(e); }}
+                            className="flex items-center justify-between bg-red-50 hover:bg-red-100 rounded-xl px-3 py-2 w-full transition-colors"
+                          >
                             <div className="flex items-center gap-1.5">
                               <TrendingDown size={13} className="text-red-400 shrink-0" />
                               <p className="text-[10px] text-red-500 font-bold">Entregado / Gastos</p>
@@ -325,11 +358,11 @@ export default function Movimientos() {
                             <p className="text-xs font-black text-red-500">
                               - S/ {Number(e.resumen_pagos.monto_entregado).toFixed(2)}
                             </p>
-                          </div>
+                          </button>
                         )}
                       </div>
                     )}
-                  </button>
+                  </div>
                 ))
             )}
           </div>
@@ -348,6 +381,36 @@ export default function Movimientos() {
           onError={(msg) => showToast(msg, "err")}
         />
       )}
+
+      {modalRecibos && (
+        <ModalRecibosEvento
+          eventoId={modalRecibos.id}
+          titulo={modalRecibos.titulo}
+          onClose={() => setModalRecibos(null)}
+        />
+      )}
+
+      {modalEliminar && (
+        <ModalEliminarMovimiento
+          movimiento={modalEliminar}
+          loading={loading}
+          onClose={() => setModalEliminar(null)}
+          onConfirm={() => handleDelete(modalEliminar.id)}
+        />
+      )}
+
+      {modalEditar && (
+        <ModalEditarMovimiento
+          movimiento={modalEditar}
+          onClose={() => setModalEditar(null)}
+          onSaved={() => {
+            setModalEditar(null);
+            showToast("Movimiento actualizado");
+            reload();
+          }}
+          onError={(msg) => showToast(msg, "err")}
+        />
+      )}
     </div>
   );
 }
@@ -361,6 +424,7 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
   const [fecha,       setFecha]       = useState(today());
   const [eventoId,    setEventoId]    = useState("");
   const [eventos,     setEventos]     = useState([]);
+  const [comprobante, setComprobante] = useState("");
   const [saving,      setSaving]      = useState(false);
   const api = useApi();
 
@@ -382,6 +446,7 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
         categoria:   Number(categoria),
         fecha,
         evento_id:   eventoId !== "" ? Number(eventoId) : null,
+        comprobante: comprobante.trim() || null,
       });
       onSaved();
     } catch (err) {
@@ -502,6 +567,31 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
             />
           </div>
 
+          {/* Comprobante */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">
+              Enlace del recibo
+              <span className="font-normal text-stone-400 ml-1">(Google Drive, opcional)</span>
+            </label>
+            <div className="relative">
+              <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300" />
+              <input
+                type="url"
+                value={comprobante}
+                onChange={(e) => setComprobante(e.target.value)}
+                placeholder="https://drive.google.com/..."
+                className="w-full h-10 pl-9 pr-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                  outline-none focus:border-amber-400 transition-colors"
+              />
+            </div>
+            {comprobante && (
+              <a href={comprobante} target="_blank" rel="noopener noreferrer"
+                className="text-[11px] text-blue-500 hover:underline flex items-center gap-1 self-start">
+                <Link size={10} /> Abrir enlace
+              </a>
+            )}
+          </div>
+
           {/* Botones */}
           <div className="flex gap-2 pt-1">
             <button
@@ -527,6 +617,170 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal editar movimiento ───────────────────────────────────────────────────
+function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
+  const [descripcion, setDescripcion] = useState(m.descripcion ?? "");
+  const [comprobante, setComprobante] = useState(m.comprobante ?? "");
+  const [saving,      setSaving]      = useState(false);
+  const api = useApi();
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put(`/movimientos/${m.id}`, {
+        descripcion: descripcion.trim(),
+        comprobante: comprobante.trim() || null,
+      });
+      onSaved();
+    } catch (err) {
+      onError(err.message ?? "Error al actualizar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+          <div>
+            <p className="text-sm font-black text-stone-800">Editar movimiento</p>
+            <p className="text-xs text-stone-400 mt-0.5 truncate max-w-56">{m.descripcion}</p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-stone-100 rounded-lg transition-colors">
+            <X size={18} className="text-stone-400" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-4">
+          {/* Info solo lectura */}
+          <div className="flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2.5">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0
+              ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-100" : "bg-red-100"}`}>
+              {m.tipo === MOVIMIENTO_TIPO.INGRESO
+                ? <TrendingUp size={13} className="text-emerald-600" />
+                : <TrendingDown size={13} className="text-red-500" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-stone-400">{formatFecha(m.fecha)} · {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]}</p>
+            </div>
+            <span className={`text-sm font-black shrink-0
+              ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}>
+              {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{Number(m.monto).toFixed(2)}
+            </span>
+          </div>
+
+          {/* Descripción */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Descripción</label>
+            <input
+              type="text"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
+              required
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Comprobante */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">
+              Enlace del recibo
+              <span className="font-normal text-stone-400 ml-1">(Google Drive, opcional)</span>
+            </label>
+            <div className="relative">
+              <ExternalLink size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-300" />
+              <input
+                type="url"
+                value={comprobante}
+                onChange={(e) => setComprobante(e.target.value)}
+                placeholder="https://drive.google.com/..."
+                className="w-full h-10 pl-9 pr-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                  outline-none focus:border-amber-400 transition-colors"
+              />
+            </div>
+            {comprobante && (
+              <a href={comprobante} target="_blank" rel="noopener noreferrer"
+                className="text-[11px] text-blue-500 hover:underline flex items-center gap-1 self-start">
+                <Link size={10} /> Abrir enlace
+              </a>
+            )}
+          </div>
+
+          {/* Botones */}
+          <div className="flex gap-2 pt-1">
+            <button type="button" onClick={onClose}
+              className="flex-1 h-10 rounded-xl border border-stone-200 text-sm font-bold
+                text-stone-500 hover:bg-stone-50 transition-colors">
+              Cancelar
+            </button>
+            <button type="submit" disabled={saving}
+              className="flex-1 h-10 rounded-xl bg-amber-500 hover:bg-amber-600 text-white
+                text-sm font-bold transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              {saving ? <Loader2 size={15} className="animate-spin" /> : "Guardar cambios"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Modal confirmar eliminar ───────────────────────────────────────────────────
+function ModalEliminarMovimiento({ movimiento: m, loading, onClose, onConfirm }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+          <p className="text-sm font-black text-stone-800">Eliminar movimiento</p>
+          <button onClick={onClose} className="p-1 hover:bg-stone-100 rounded-lg transition-colors">
+            <X size={18} className="text-stone-400" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 flex flex-col gap-4">
+          {/* Detalle del movimiento */}
+          <div className="flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-3">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0
+              ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-100" : "bg-red-100"}`}>
+              {m.tipo === MOVIMIENTO_TIPO.INGRESO
+                ? <TrendingUp size={14} className="text-emerald-600" />
+                : <TrendingDown size={14} className="text-red-500" />}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-stone-700 truncate">{m.descripcion}</p>
+              <p className="text-xs text-stone-400">{MOVIMIENTO_CATEGORIA_LABEL[m.categoria]} · {formatFecha(m.fecha)}</p>
+            </div>
+            <span className={`text-sm font-black shrink-0 ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}>
+              {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{Number(m.monto).toFixed(2)}
+            </span>
+          </div>
+
+          <div className="flex items-start gap-2 bg-red-50 rounded-xl px-3 py-2.5">
+            <AlertCircle size={14} className="text-red-400 shrink-0 mt-0.5" />
+            <p className="text-xs text-red-500">Esta acción no se puede deshacer.</p>
+          </div>
+
+          <div className="flex gap-2">
+            <button onClick={onClose}
+              className="flex-1 h-10 rounded-xl border border-stone-200 text-sm font-bold text-stone-500 hover:bg-stone-50 transition-colors">
+              Cancelar
+            </button>
+            <button onClick={onConfirm} disabled={loading}
+              className="flex-1 h-10 rounded-xl bg-red-500 hover:bg-red-600 text-white text-sm font-bold
+                transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+              {loading ? <Loader2 size={15} className="animate-spin" /> : <><Trash2 size={14} /> Eliminar</>}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

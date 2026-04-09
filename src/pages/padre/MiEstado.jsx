@@ -321,8 +321,8 @@ function FilaItem({ titulo, subtitulo, fecha, monto, montoColor, badge, badgeCol
   return (
     <div className="flex items-start gap-3 py-3 border-b border-stone-50 last:border-0">
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-stone-700 truncate">{titulo}</p>
-        {subtitulo && <p className="text-xs text-stone-400 mt-0.5 truncate">{subtitulo}</p>}
+        <p className="text-sm font-semibold text-stone-700 wrap-break-word">{titulo}</p>
+        {subtitulo && <p className="text-xs text-stone-400 mt-0.5 wrap-break-word">{subtitulo}</p>}
         {fecha && <p className="text-xs text-stone-300 mt-0.5">{fecha}</p>}
       </div>
       <div className="flex flex-col items-end gap-1 shrink-0">

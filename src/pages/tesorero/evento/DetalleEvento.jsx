@@ -13,11 +13,15 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
     const [tab, setTab] = useState("info");
     const [evento, setEvento] = useState(inicial);
     const [form, setForm] = useState({
-        titulo:      evento.titulo      ?? "",
-        descripcion: evento.descripcion ?? "",
-        lugar:       evento.lugar       ?? "",
-        tiene_multa: evento.tiene_multa ?? false,
-        multa_monto: evento.multa_monto ?? "10",
+        titulo:       evento.titulo      ?? "",
+        descripcion:  evento.descripcion ?? "",
+        lugar:        evento.lugar       ?? "",
+        tiene_multa:  evento.tiene_multa ?? false,
+        multa_monto:  evento.multa_monto ?? "10",
+        fecha_inicio: evento.fecha_inicio ? evento.fecha_inicio.slice(0, 10) : "",
+        fecha_fin:    evento.fecha_fin    ? evento.fecha_fin.slice(0, 10)    : "",
+        hora_inicio:  evento.hora_inicio  ?? "",
+        hora_fin:     evento.hora_fin     ?? "",
     });
     const [loading, setLoading] = useState(false);
     const api = useApi();
@@ -48,11 +52,26 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
     // ── Guardar ───────────────────────────────────────────────────────────────
     const handleSave = async () => {
         if (!form.titulo) { onToast("El título es obligatorio", "err"); return; }
+        if (!form.fecha_inicio) { onToast("La fecha de inicio es obligatoria", "err"); return; }
+        if (form.fecha_fin && form.fecha_fin < form.fecha_inicio) {
+            onToast("La fecha fin no puede ser antes que la fecha inicio", "err"); return;
+        }
+        const isCobro = evento.tipo === 3;
+        if (!isCobro && form.hora_inicio && form.hora_fin && form.hora_fin <= form.hora_inicio) {
+            onToast("La hora de fin debe ser después de la hora de inicio", "err"); return;
+        }
         setLoading(true);
         try {
             const res = await api.put(`/eventos/${evento.id}`, {
-                ...form,
-                multa_monto: Number(form.multa_monto),
+                titulo:       form.titulo,
+                descripcion:  form.descripcion  || null,
+                lugar:        form.lugar        || null,
+                tiene_multa:  isCobro ? false : form.tiene_multa,
+                multa_monto:  Number(form.multa_monto),
+                fecha_inicio: form.fecha_inicio,
+                fecha_fin:    form.fecha_fin    || null,
+                hora_inicio:  isCobro ? null : (form.hora_inicio || null),
+                hora_fin:     isCobro ? null : (form.hora_fin    || null),
             });
 
             const ajustes = res?.ajustes ?? {};
@@ -142,6 +161,24 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                         <Field label="Título *"    value={form.titulo}      onChange={set("titulo")}      placeholder="Título del evento" />
                         <Field label="Descripción" value={form.descripcion} onChange={set("descripcion")} placeholder="Descripción..." />
                         <Field label="Lugar"       value={form.lugar}       onChange={set("lugar")}       placeholder="Ej: Aula 3°A" />
+
+                        {/* Fechas */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <Field label="Fecha inicio *" type="date"
+                                value={form.fecha_inicio} onChange={set("fecha_inicio")} />
+                            <Field label={evento.tipo === 3 ? "Fecha fin (opcional)" : "Fecha fin"} type="date"
+                                value={form.fecha_fin} onChange={set("fecha_fin")} />
+                        </div>
+
+                        {/* Horario — no para cuota (tipo 3) */}
+                        {evento.tipo !== 3 && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <Field label="Hora inicio" type="time"
+                                    value={form.hora_inicio} onChange={set("hora_inicio")} />
+                                <Field label="Hora fin" type="time"
+                                    value={form.hora_fin} onChange={set("hora_fin")} />
+                            </div>
+                        )}
 
                         {evento.tipo === 3 ? (
                             <Field label="Monto del cobro (S/)" type="number"

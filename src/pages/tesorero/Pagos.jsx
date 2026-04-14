@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Plus,
   Search,
@@ -10,13 +11,13 @@ import {
 import { useAbono } from "../../hook/useAbono";
 import { usePadres } from "../../hook/usePadres";
 import ModalAnulacion from "./../../constants/ModalAnulacion";
-import ModalAbono from "../../constants/ModalAbono";
 import { formatFecha, Toast, filtrarTexto } from "./../../utils/utility";
 
 export default function Pagos() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [search, setSearch] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
-  const [modal, setModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [abonoAAnular, setAbonoAAnular] = useState(null);
 
@@ -33,6 +34,14 @@ export default function Pagos() {
       estado: filtroEstado !== "" ? Number(filtroEstado) : null,
     });
   }, [filtroEstado]);
+
+  // Mostrar toast si se viene de NuevoAbono con éxito
+  useEffect(() => {
+    if (location.state?.successMsg) {
+      showToast(location.state.successMsg);
+      window.history.replaceState({}, "");
+    }
+  }, []);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -75,7 +84,7 @@ export default function Pagos() {
           </p>
         </div>
         <button
-          onClick={() => setModal(true)}
+          onClick={() => navigate("nuevo")}
           className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
         >
           <Plus size={16} /> Registrar
@@ -132,18 +141,6 @@ export default function Pagos() {
           )}
         </div>
       </div>
-
-      {/* Modal registrar abono */}
-      {modal && (
-        <ModalAbono
-          onClose={() => setModal(false)}
-          onSuccess={(msg) => {
-            showToast(msg);
-            reload();
-          }}
-          onError={(msg) => showToast(msg, "err")}
-        />
-      )}
 
       {/* Modal anular abono */}
       <ModalAnulacion

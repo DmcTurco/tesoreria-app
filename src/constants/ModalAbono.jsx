@@ -264,7 +264,7 @@ export default function ModalAbono({ onClose, onSuccess, onError }) {
                             >
                               {item.tipo === "multa" ? "MULTA" : "COBRO"}
                             </span>
-                            <p className="text-sm font-semibold text-stone-700 truncate max-w-[180px]">
+                            <p className="text-sm font-semibold text-stone-700 line-clamp-2 leading-snug">
                               {item.label}
                             </p>
                           </div>

@@ -1,3 +1,8 @@
+
+
+
+
+
 import { useEffect, useState } from "react";
 import {
   AlertTriangle, CheckCircle, CreditCard,
@@ -78,12 +83,33 @@ export default function MiEstado() {
         (ep) => ep.estado === EVENTO_PADRE_ESTADO.PENDIENTE && ep.evento?.tipo === 3
       );
 
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  function esFuturo(ep) {
+    const fechaStr = ep.evento?.fecha_inicio;
+    if (!fechaStr) return false;
+    const [y, m, d] = fechaStr.slice(0, 10).split("-");
+    const fecha = new Date(+y, +m - 1, +d);
+    return fecha > hoy;
+  }
+
   const totalMultas = multasPendientes.reduce(
     (s, m) => s + Number(m.monto) - Number(m.monto_pagado ?? 0), 0
   );
-  const totalCobros = cobrosPendientes.reduce(
-    (s, ep) => s + Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
-  );
+  const totalCobros = cobrosPendientes
+    .filter((ep) => !esFuturo(ep))
+    .reduce(
+      (s, ep) => s + Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
+    );
+
+  // El saldo del backend puede incluir cobros futuros; los restamos para no confundir al padre
+  const montoCObrosFuturos = cobrosPendientes
+    .filter(esFuturo)
+    .reduce(
+      (s, ep) => s + Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
+    );
+  const saldoVisible = Math.max(0, saldo - montoCObrosFuturos);
 
   return (
     <div className="flex flex-col gap-4">
@@ -133,16 +159,16 @@ export default function MiEstado() {
           </div>
           <div className="bg-stone-50 rounded-xl p-3 flex flex-col gap-1">
             <p className="text-[10px] text-stone-400 font-medium uppercase tracking-wide">Total</p>
-            <p className={`text-lg font-black ${saldo > 0 ? "text-stone-800" : "text-emerald-500"}`}>
-              S/ {saldo.toFixed(2)}
+            <p className={`text-lg font-black ${saldoVisible > 0 ? "text-stone-800" : "text-emerald-500"}`}>
+              S/ {saldoVisible.toFixed(2)}
             </p>
             <p className="text-[10px] text-stone-400">
-              {saldo > 0 ? "deuda activa" : "al día ✓"}
+              {saldoVisible > 0 ? "deuda activa" : "al día ✓"}
             </p>
           </div>
         </div>
 
-        {saldo > 0 ? (
+        {saldoVisible > 0 ? (
           <div className="flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2.5">
             <AlertTriangle size={13} className="text-red-400 shrink-0" />
             <p className="text-xs text-red-500 font-medium">
@@ -163,22 +189,32 @@ export default function MiEstado() {
       {cobrosPendientes.length > 0 && (
         <SeccionCard
           titulo="Cobros pendientes"
-          badge={cobrosPendientes.length}
+          badge={cobrosPendientes.filter((ep) => !esFuturo(ep)).length}
           badgeColor="bg-orange-50 text-orange-600"
+          badgeExtra={cobrosPendientes.filter(esFuturo).length}
+          badgeExtraColor="bg-stone-100 text-stone-400"
+          badgeExtraLabel="próximo"
           icon={<CreditCard size={15} className="text-orange-400" />}
         >
-          {cobrosPendientes.map((ep) => (
+          {cobrosPendientes.map((ep) => {
+            const futuro = esFuturo(ep);
+            return (
             <FilaItem
               key={ep.id}
               titulo={ep.evento?.titulo ?? "—"}
               subtitulo={ep.evento?.descripcion}
-              fecha={ep.evento?.fecha_fin ? `Hasta: ${formatFecha(ep.evento.fecha_fin)}` : "Sin fecha límite"}
+              fecha={ep.evento?.fecha_inicio
+                ? `Desde: ${formatFecha(ep.evento.fecha_inicio)}`
+                : ep.evento?.fecha_fin
+                ? `Hasta: ${formatFecha(ep.evento.fecha_fin)}`
+                : "Sin fecha límite"}
               monto={`S/ ${(Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0)).toFixed(2)}`}
-              montoColor="text-orange-600"
-              badge="Pendiente"
-              badgeColor="bg-orange-50 text-orange-600"
+              montoColor={futuro ? "text-stone-400" : "text-orange-600"}
+              badge={futuro ? "Próximo" : "Pendiente"}
+              badgeColor={futuro ? "bg-stone-100 text-stone-400" : "bg-orange-50 text-orange-600"}
             />
-          ))}
+            );
+          })}
         </SeccionCard>
       )}
 
@@ -257,6 +293,17 @@ export default function MiEstado() {
               ? monto - montoNeto
               : null;
             const total = devolucion != null ? montoNeto : monto;
+
+            // Resolver a qué multa o evento corresponde este abono
+            let concepto = null;
+            if (a.tipo_deuda === "multa") {
+              const multa = multas.find((m) => m.id === a.deuda_id);
+              concepto = multa?.concepto ?? null;
+            } else {
+              const ep = eventos.find((ep) => ep.id === a.deuda_id);
+              concepto = ep?.evento?.titulo ?? null;
+            }
+
             return (
               <div key={a.id} className="flex items-start gap-3 py-2.5 border-b border-stone-50 last:border-0">
                 <div className="flex-1 min-w-0">
@@ -271,6 +318,9 @@ export default function MiEstado() {
                       {Number(a.estado) === 0 ? "Activo" : "Anulado"}
                     </span>
                   </div>
+                  {concepto && (
+                    <p className="text-xs font-semibold text-stone-600 mb-1 truncate">{concepto}</p>
+                  )}
                   <div className="flex flex-col gap-0.5">
                     <div className="flex justify-between text-xs">
                       <span className="text-stone-400">Abono</span>
@@ -299,12 +349,17 @@ export default function MiEstado() {
 }
 
 // ── Sección con header ────────────────────────────────────────────────────────
-function SeccionCard({ titulo, badge, badgeColor, icon, children }) {
+function SeccionCard({ titulo, badge, badgeColor, badgeExtra, badgeExtraColor, badgeExtraLabel, icon, children }) {
   return (
     <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
       <div className="flex items-center gap-2 px-4 py-3 border-b border-stone-50">
         {icon}
         <p className="text-sm font-black text-stone-700 flex-1">{titulo}</p>
+        {badgeExtra > 0 && (
+          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeExtraColor}`}>
+            {badgeExtra} {badgeExtraLabel}{badgeExtra !== 1 ? "s" : ""}
+          </span>
+        )}
         {badge > 0 && (
           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${badgeColor}`}>
             {badge} pendiente{badge > 1 ? "s" : ""}

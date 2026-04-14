@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMultas } from "../../hook/useMultas";
 import { MULTA_ESTADO, MULTA_ESTADO_LABEL } from "../../constants/estados";
+import { filtrarTexto } from "../../utils/utility";
 
 const COLORS = {
   0: "bg-yellow-50 text-yellow-700",
@@ -50,13 +51,10 @@ export default function Multas() {
     }
   };
 
-  const filtradas = multas.filter((m) => {
-    const nombre = m.padre?.nombre ?? "";
-    return (
-      nombre.toLowerCase().includes(search.toLowerCase()) ||
-      m.concepto.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  const filtradas = filtrarTexto(multas, search, [
+    (m) => m.padre?.nombre,
+    "concepto",
+  ]);
 
   const pendientesTotal = multas
     .filter((m) => m.estado === MULTA_ESTADO.PENDIENTE)

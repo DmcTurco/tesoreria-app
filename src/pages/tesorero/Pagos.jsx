@@ -11,7 +11,7 @@ import { useAbono } from "../../hook/useAbono";
 import { usePadres } from "../../hook/usePadres";
 import ModalAnulacion from "./../../constants/ModalAnulacion";
 import ModalAbono from "../../constants/ModalAbono";
-import { formatFecha, Toast } from "./../../utils/utility";
+import { formatFecha, Toast, filtrarTexto } from "./../../utils/utility";
 
 export default function Pagos() {
   const [search, setSearch] = useState("");
@@ -47,14 +47,12 @@ export default function Pagos() {
     setAbonoAAnular({ ...abono, padre_nombre: padre?.nombre ?? "—" });
   };
 
-  const filtrados = abonos.filter((a) => {
-    if (!search) return true;
-    const padre = padres.find((p) => p.id === a.padre_id);
-    return (
-      padre?.nombre?.toLowerCase().includes(search.toLowerCase()) ||
-      a.tipo_deuda?.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  const filtrados = filtrarTexto(abonos, search, [
+    (a) => a.padre?.nombre,
+    (a) => a.padre?.codigo,
+    (a) => a.padre?.hijo,
+    "tipo_deuda",
+  ]);
 
   const agrupadosPorPadre = Object.values(
     filtrados.reduce((acc, a) => {
@@ -179,7 +177,7 @@ function GrupoPadre({ padre, abonos, handleAnular }) {
           <p className="text-sm font-bold text-stone-700 line-clamp-2 wrap-break-word">
             {padre.nombre}
           </p>
-          <p className="text-xs text-stone-400">{padre.codigo}</p>
+          <p className="text-xs text-stone-400">{padre.codigo} · {padre.hijo}</p>
         </div>
         <span className="text-xs font-black text-emerald-600">
           S/{" "}

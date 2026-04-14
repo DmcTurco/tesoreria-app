@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { usePadres } from "@/hook/usePadres";
 import { EVENTO_TIPO_LABEL } from "../../../constants/estados";
-import { formatFecha, StatCard } from "../../../utils/utility";
+import { formatFecha, StatCard, filtrarTexto } from "../../../utils/utility";
 import useApi from "@/hook/useApi";
 import VistaAsignarDia from "./VistaAsignarDia";
 
@@ -318,11 +318,10 @@ function AsignarManual({ evento, onDone, onToast }) {
     }
   };
 
-  const disponibles = padres.filter(
-    (p) =>
-      !yaAsignados.includes(p.id) &&
-      (p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        p.hijo?.toLowerCase().includes(search.toLowerCase())),
+  const disponibles = filtrarTexto(
+    padres.filter((p) => !yaAsignados.includes(p.id)),
+    search,
+    ["nombre", "hijo"],
   );
 
   return (
@@ -448,11 +447,10 @@ function AsignarActividad({ evento, onDone, onToast }) {
     }
   };
 
-  const disponibles = padres.filter(
-    (p) =>
-      !yaAsignados.includes(p.id) &&
-      (p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-        p.hijo?.toLowerCase().includes(search.toLowerCase())),
+  const disponibles = filtrarTexto(
+    padres.filter((p) => !yaAsignados.includes(p.id)),
+    search,
+    ["nombre", "hijo"],
   );
 
   const totalDisponibles = padres.filter(

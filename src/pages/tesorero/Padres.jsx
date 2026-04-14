@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { usePadres } from "../../hook/usePadres";
 import useApi from "../../hook/useApi";
+import { filtrarTexto } from "../../utils/utility";
 
 export default function Padres() {
   const [search, setSearch] = useState("");
@@ -36,12 +37,7 @@ export default function Padres() {
     setTimeout(() => setToast(null), 2800);
   };
 
-  const filtrados = padres.filter(
-    (p) =>
-      p.nombre.toLowerCase().includes(search.toLowerCase()) ||
-      p.codigo?.toLowerCase().includes(search.toLowerCase()) ||
-      p.hijo?.toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtrados = filtrarTexto(padres, search, ["nombre", "codigo", "hijo"]);
 
   return (
     <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">

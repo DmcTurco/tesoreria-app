@@ -1,7 +1,8 @@
 // components/PadreBuscador.jsx
 import { useState, useEffect, useRef } from "react";
 import { Search, X, Loader2, AlertCircle } from "lucide-react";
-import useApi from "@/hook/useApi"; // ajusta la ruta según tu proyecto
+import useApi from "@/hook/useApi";
+import { filtrarTexto } from "@/utils/utility";
 
 export default function PadreBuscador({ value, onChange }) {
   const [query, setQuery] = useState("");
@@ -38,14 +39,7 @@ export default function PadreBuscador({ value, onChange }) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filtered = padres.filter((p) => {
-    const q = query.toLowerCase();
-    return (
-      p.nombre.toLowerCase().includes(q) ||
-      p.hijo.toLowerCase().includes(q) ||
-      (p.dni && p.dni.includes(q))
-    );
-  });
+  const filtered = filtrarTexto(padres, query, ["nombre", "hijo", "dni"]);
 
   const handleSelect = (padre) => {
     setSelected(padre);

@@ -1,5 +1,22 @@
 import { TrendingDown, TrendingUp } from "lucide-react";
 
+/**
+ * Filtra un array por una cadena de búsqueda sobre los campos indicados.
+ * @param {Array}  items  - Lista a filtrar
+ * @param {string} query  - Texto buscado
+ * @param {Array}  campos - Claves string o funciones (item) => valor
+ */
+export function filtrarTexto(items, query, campos) {
+  if (!query?.trim()) return items;
+  const q = query.toLowerCase().trim();
+  return items.filter((item) =>
+    campos.some((campo) => {
+      const val = typeof campo === "function" ? campo(item) : item[campo];
+      return val != null && val.toString().toLowerCase().includes(q);
+    })
+  );
+}
+
 export const formatFecha = (iso) => {
   if (!iso) return "—";
   // Siempre tomamos solo YYYY-MM-DD para evitar desfase UTC

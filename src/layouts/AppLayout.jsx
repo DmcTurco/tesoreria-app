@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   PiggyBank,
   FileDown,
+  FileText,
   Database,
   LogOut,
   Menu,
@@ -26,8 +27,9 @@ const NAV_TESORERO = [
   { key: "eventos", label: "Eventos", icon: CalendarDays },
   { key: "multas", label: "Multas", icon: AlertTriangle },
   { key: "presupuesto", label: "Presupuesto", icon: PiggyBank },
-  { key: "exportar",    label: "Exportar",    icon: FileDown },
-  { key: "admin",       label: "Admin DB",    icon: Database },
+  { key: "exportar",          label: "Exportar",    icon: FileDown },
+  { key: "reporte-deudores",  label: "Deudores",    icon: FileText },
+  { key: "admin",             label: "Admin DB",    icon: Database },
 ];
 
 const NAV_PROFESORA = [

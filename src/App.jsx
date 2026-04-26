@@ -17,6 +17,7 @@ import Presupuesto       from "./pages/tesorero/Presupuesto";
 import ExportarImportar  from "./pages/tesorero/ExportarImportar";
 import AdminDB           from "./pages/tesorero/AdminDB";
 import NuevoAbono        from "./pages/tesorero/NuevoAbono";
+import ReporteDeudores   from "./pages/tesorero/ReporteDeudores";
 
 import TablaComparativa from "./components/TablaComparativa";
 import ResumenProfe from "./pages/profesora/ResumenProfe";
@@ -55,7 +56,8 @@ function App() {
           <Route path="eventos"       element={<Eventos />} />
           <Route path="multas"        element={<Multas />} />
           <Route path="presupuesto"   element={<Presupuesto />} />
-          <Route path="exportar"      element={<ExportarImportar />} />
+          <Route path="exportar"        element={<ExportarImportar />} />
+          <Route path="reporte-deudores" element={<ReporteDeudores />} />
           <Route path="admin"         element={<AdminDB />} />
         </Route>
 

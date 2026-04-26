@@ -198,11 +198,18 @@ export default function NuevoAbono() {
                 const sel = itemsSel.find(
                   (i) => i.tipo === item.tipo && i.id === item.id,
                 );
+                const esFuturo =
+                  item.fecha_inicio && item.fecha_inicio.slice(0, 10) > today();
                 return (
                   <div
                     key={`${item.tipo}-${item.id}`}
                     className={`rounded-2xl border-2 px-4 py-3 transition-all
-                      ${sel ? "border-amber-400 bg-amber-50 shadow-sm" : "border-stone-100 bg-stone-50"}`}
+                      ${sel
+                        ? "border-amber-400 bg-amber-50 shadow-sm"
+                        : esFuturo
+                          ? "border-blue-200 bg-blue-50"
+                          : "border-stone-100 bg-stone-50"
+                      }`}
                   >
                     {/* Checkbox + label + saldo */}
                     <button
@@ -222,6 +229,11 @@ export default function NuevoAbono() {
                         >
                           {item.tipo === "multa" ? "MULTA" : "COBRO"}
                         </span>
+                        {esFuturo && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 mt-0.5 bg-blue-100 text-blue-600">
+                            PRÓXIMO
+                          </span>
+                        )}
                         <p className="text-sm font-semibold text-stone-700 line-clamp-2 leading-snug">
                           {item.label}
                         </p>

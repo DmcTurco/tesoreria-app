@@ -180,7 +180,7 @@ function GrupoPadre({ padre, abonos, handleAnular }) {
           S/{" "}
           {abonos
             .filter((a) => a.estado === 0)
-            .reduce((s, a) => s + Number(a.monto), 0)
+            .reduce((s, a) => s + (a.monto_neto !== null ? Number(a.monto_neto) : Number(a.monto)), 0)
             .toFixed(2)}
         </span>
         <div
@@ -235,9 +235,20 @@ function GrupoPadre({ padre, abonos, handleAnular }) {
                     </p>
                   </div>
 
-                  <span className="text-xs font-bold text-emerald-600 shrink-0">
-                    +S/ {Number(a.monto).toFixed(2)}
-                  </span>
+                  {tieneAjustes && !esAnulado && montoNeto !== null ? (
+                    <span className="flex items-center gap-1 shrink-0">
+                      <span className="text-xs text-stone-400 line-through">
+                        +S/ {Number(a.monto).toFixed(2)}
+                      </span>
+                      <span className="text-xs font-bold text-emerald-600">
+                        S/ {Number(montoNeto).toFixed(2)}
+                      </span>
+                    </span>
+                  ) : (
+                    <span className="text-xs font-bold text-emerald-600 shrink-0">
+                      +S/ {Number(a.monto).toFixed(2)}
+                    </span>
+                  )}
 
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0

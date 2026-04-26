@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Download, Printer, Loader2, AlertCircle,
   CheckCircle, ChevronDown,
@@ -9,7 +9,7 @@ import {
   EVENTO_TIPO, EVENTO_TIPO_LABEL,
   MULTA_ESTADO, EVENTO_PADRE_ESTADO,
 } from "../../constants/estados";
-import { formatFecha } from "../../utils/utility";
+import { formatFecha, today } from "../../utils/utility";
 
 // ── CSV helpers (mismo patrón que ExportarImportar) ───────────────────────────
 function csvEscape(val) {
@@ -39,11 +39,22 @@ export default function ReporteDeudores() {
   const { eventos, getEventos, loading: loadingEventos, getEventoMovimientos } = useEventos();
   const { getMultas } = useMultas();
 
-  const [eventoId,    setEventoId]    = useState("");
-  const [eventoInfo,  setEventoInfo]  = useState(null);
-  const [deudores,    setDeudores]    = useState([]);
-  const [loadingData, setLoadingData] = useState(false);
-  const [error,       setError]       = useState(null);
+  const [eventoId,        setEventoId]        = useState("");
+  const [eventoInfo,      setEventoInfo]      = useState(null);
+  const [deudores,        setDeudores]        = useState([]);
+  const [loadingData,     setLoadingData]     = useState(false);
+  const [error,           setError]           = useState(null);
+  const [dropdownAbierto, setDropdownAbierto] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target))
+        setDropdownAbierto(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
 
   useEffect(() => { getEventos(); }, []);
 
@@ -264,26 +275,79 @@ export default function ReporteDeudores() {
       {/* Selector de evento */}
       <div className="bg-white rounded-2xl border border-stone-100 p-5 flex flex-col gap-3">
         <p className="text-sm font-bold text-stone-700">Evento</p>
-        <div className="relative">
-          <select
-            value={eventoId}
-            onChange={handleSelect}
+        <div className="relative" ref={dropdownRef}>
+          {/* Botón trigger */}
+          <button
+            onClick={() => !loadingEventos && setDropdownAbierto((v) => !v)}
             disabled={loadingEventos}
-            className="w-full h-11 pl-4 pr-10 bg-stone-50 border border-stone-200 rounded-xl
-              text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors
-              appearance-none disabled:opacity-50 cursor-pointer"
+            className={`w-full h-11 pl-4 pr-10 bg-stone-50 border rounded-xl text-sm text-left
+              transition-colors disabled:opacity-50
+              ${dropdownAbierto ? "border-amber-400" : "border-stone-200"}
+              ${eventoInfo ? "text-stone-700" : "text-stone-400"}`}
           >
-            <option value="">— Selecciona un evento —</option>
-            {eventos.map((e) => (
-              <option key={e.id} value={e.id}>
-                [{EVENTO_TIPO_LABEL[e.tipo]}] {e.titulo} · {formatFecha(e.fecha_inicio)}
-              </option>
-            ))}
-          </select>
+            {eventoInfo ? (
+              <span className="flex items-center gap-2">
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">
+                  {EVENTO_TIPO_LABEL[eventoInfo.tipo]}
+                </span>
+                <span className="truncate">{eventoInfo.titulo}</span>
+                {eventoInfo.fecha_inicio?.slice(0, 10) > today() && (
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
+                    Próximo
+                  </span>
+                )}
+              </span>
+            ) : (
+              "— Selecciona un evento —"
+            )}
+          </button>
           <ChevronDown
             size={15}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
+            className={`absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none transition-transform ${dropdownAbierto ? "rotate-180" : ""}`}
           />
+
+          {/* Lista desplegable */}
+          {dropdownAbierto && (
+            <div className="absolute z-20 top-full mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+              {/* Opción vacía */}
+              <button
+                onClick={() => { handleSelect({ target: { value: "" } }); setDropdownAbierto(false); }}
+                className="w-full px-4 py-2.5 text-left text-sm text-stone-400 hover:bg-stone-50 transition-colors"
+              >
+                — Selecciona un evento —
+              </button>
+
+              {eventos.map((e) => {
+                const futuro = e.fecha_inicio && e.fecha_inicio.slice(0, 10) > today();
+                const seleccionado = String(e.id) === String(eventoId);
+                return (
+                  <button
+                    key={e.id}
+                    onClick={() => { handleSelect({ target: { value: e.id } }); setDropdownAbierto(false); }}
+                    className={`w-full px-4 py-2.5 text-left transition-colors flex items-center gap-2
+                      ${seleccionado ? "bg-amber-50" : futuro ? "bg-blue-50/60 hover:bg-blue-50" : "hover:bg-stone-50"}`}
+                  >
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">
+                      {EVENTO_TIPO_LABEL[e.tipo]}
+                    </span>
+                    <span className="flex-1 min-w-0">
+                      <span className="text-sm font-semibold text-stone-700 block truncate">
+                        {e.titulo}
+                      </span>
+                      <span className="text-[10px] text-stone-400">
+                        {formatFecha(e.fecha_inicio)}
+                      </span>
+                    </span>
+                    {futuro && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
+                        Próximo
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 

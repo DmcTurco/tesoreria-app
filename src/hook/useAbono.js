@@ -97,6 +97,7 @@ export const useAbono = () => {
                         tipo: "cobro",
                         id: cobro.id,
                         label: cobro.evento?.titulo ?? "—",
+                        fecha_inicio: cobro.evento?.fecha_inicio ?? null,
                         monto_total,
                         monto_pagado,
                         saldo,

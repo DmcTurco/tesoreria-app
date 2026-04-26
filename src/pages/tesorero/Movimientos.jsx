@@ -302,20 +302,31 @@ export default function Movimientos() {
             ) : (
               eventos
                 .filter((e) => e.tipo === 3)
-                .map((e) => (
+                .map((e) => {
+                  const esFuturo = e.fecha_inicio && e.fecha_inicio.slice(0, 10) > today();
+                  return (
                   <div
                     key={e.id}
                     onClick={() => setEventoDetalle(e)}
-                    className="w-full flex flex-col gap-2 px-4 py-3 hover:bg-stone-50 transition-colors cursor-pointer border-b border-stone-50 last:border-0"
+                    className={`w-full flex flex-col gap-2 px-4 py-3 transition-colors cursor-pointer border-b border-stone-50 last:border-0
+                      ${esFuturo ? "bg-blue-50/50 hover:bg-blue-50" : "hover:bg-stone-50"}`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                        <Users size={15} className="text-amber-500" />
+                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
+                        ${esFuturo ? "bg-blue-100" : "bg-amber-50"}`}>
+                        <Users size={15} className={esFuturo ? "text-blue-500" : "text-amber-500"} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-stone-700 truncate">
-                          {e.titulo}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-stone-700 truncate">
+                            {e.titulo}
+                          </p>
+                          {esFuturo && (
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
+                              PRÓXIMO
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-stone-400">
                           S/ {Number(e.multa_monto).toFixed(2)} · {formatFecha(e.fecha_inicio)}
                         </p>
@@ -363,7 +374,8 @@ export default function Movimientos() {
                       </div>
                     )}
                   </div>
-                ))
+                );
+                })
             )}
           </div>
         </div>

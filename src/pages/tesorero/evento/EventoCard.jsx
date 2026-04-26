@@ -1,6 +1,6 @@
 import { Info, UserPlus, CheckSquare } from "lucide-react";
 import { EVENTO_TIPO_LABEL, EVENTO_ESTADO } from "../../../constants/estados";
-import { formatFecha } from "@/utils/utility";
+import { formatFecha, today } from "@/utils/utility";
 
 const TIPO_COLORS = {
   0: "bg-amber-50 text-amber-700",
@@ -66,11 +66,12 @@ export default function EventoCard({
 }) {
   const ic = TIPO_ICON_COLOR[e.tipo] ?? TIPO_ICON_COLOR[0];
   const activo = e.estado === EVENTO_ESTADO.ACTIVO;
+  const esFuturo = activo && e.fecha_inicio && e.fecha_inicio.slice(0, 10) > today();
 
   return (
     <div
-      className={`bg-white rounded-2xl border border-stone-100 flex flex-col overflow-hidden transition-opacity
-      ${!activo ? "opacity-60" : ""}`}
+      className={`bg-white rounded-2xl border flex flex-col overflow-hidden transition-opacity
+      ${!activo ? "opacity-60 border-stone-100" : esFuturo ? "border-blue-200" : "border-stone-100"}`}
     >
       {/* Cuerpo */}
       <div className="flex items-start gap-3 px-4 pt-4 pb-3">
@@ -101,6 +102,11 @@ export default function EventoCard({
             {!activo && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-400">
                 Cerrado
+              </span>
+            )}
+            {esFuturo && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600">
+                Próximo
               </span>
             )}
             {e.tiene_multa && (

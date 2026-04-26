@@ -1,9 +1,10 @@
 import { useState } from "react";
 import {
   Database, RefreshCw, AlertTriangle, CheckCircle,
-  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench,
+  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench, Download,
 } from "lucide-react";
 import useApi from "../../hook/useApi";
+import { getApiBaseUrl, getHeaders } from "../../services/api";
 
 export default function AdminDB() {
   const api = useApi();
@@ -58,6 +59,9 @@ export default function AdminDB() {
           confirmar={false}
         />
 
+        {/* ── Backup ── */}
+        <BackupCard />
+
         {/* ── Migrate Fresh (destructivo) ── */}
         <AccionCard
           icon={<Trash2 size={20} className="text-red-500" />}
@@ -74,6 +78,90 @@ export default function AdminDB() {
           textoConfirm="BORRAR TODO"
         />
 
+      </div>
+    </div>
+  );
+}
+
+// ── Backup ───────────────────────────────────────────────────────────────────
+function BackupCard() {
+  const [running, setRunning] = useState(false);
+  const [error,   setError]   = useState(null);
+  const [ok,      setOk]      = useState(false);
+
+  const handleBackup = async () => {
+    setRunning(true);
+    setError(null);
+    setOk(false);
+    try {
+      const url      = `${getApiBaseUrl()}/admin/backup`;
+      const response = await fetch(url, { method: "GET", headers: getHeaders() });
+
+      if (!response.ok) {
+        const json = await response.json().catch(() => ({}));
+        throw new Error(json.message ?? `Error ${response.status}`);
+      }
+
+      const blob      = await response.blob();
+      const disp      = response.headers.get("Content-Disposition") ?? "";
+      const match     = disp.match(/filename="?([^"]+)"?/);
+      const filename  = match?.[1] ?? `backup_${Date.now()}.json`;
+
+      const a   = document.createElement("a");
+      a.href    = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      setOk(true);
+    } catch (e) {
+      setError(e.message ?? "Error al descargar backup");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-50">
+        <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+          <Download size={20} className="text-indigo-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-black text-stone-800">Backup de base de datos</p>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-600">
+              Exportar
+            </span>
+          </div>
+          <p className="text-xs text-stone-400 mt-0.5">
+            Descarga todas las tablas en un archivo JSON con la fecha y hora actual.
+          </p>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 flex flex-col gap-3">
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2.5">
+            <AlertTriangle size={14} className="text-red-400 shrink-0" />
+            <p className="text-xs text-red-500 font-medium">{error}</p>
+          </div>
+        )}
+        {ok && (
+          <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3 py-2.5">
+            <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+            <p className="text-xs text-emerald-700 font-semibold">Backup descargado correctamente</p>
+          </div>
+        )}
+        <button
+          onClick={handleBackup}
+          disabled={running}
+          className="flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold
+            text-white bg-indigo-500 hover:bg-indigo-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {running
+            ? <><Loader2 size={15} className="animate-spin" /> Generando backup...</>
+            : <><Download size={15} /> Descargar backup</>}
+        </button>
       </div>
     </div>
   );

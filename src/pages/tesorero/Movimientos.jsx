@@ -638,8 +638,18 @@ function ModalNuevoMovimiento({ createMovimiento, onClose, onSaved, onError }) {
 function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
   const [descripcion, setDescripcion] = useState(m.descripcion ?? "");
   const [comprobante, setComprobante] = useState(m.comprobante ?? "");
+  const [categoria,   setCategoria]   = useState(String(m.categoria ?? MOVIMIENTO_CATEGORIA.OTRO));
+  const [fecha,       setFecha]       = useState(m.fecha ? m.fecha.slice(0, 10) : today());
+  const [eventoId,    setEventoId]    = useState(m.evento_id ? String(m.evento_id) : "");
+  const [eventos,     setEventos]     = useState([]);
   const [saving,      setSaving]      = useState(false);
   const api = useApi();
+
+  useEffect(() => {
+    api.get("/eventos")
+      .then((data) => setEventos(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -648,6 +658,9 @@ function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
       await api.put(`/movimientos/${m.id}`, {
         descripcion: descripcion.trim(),
         comprobante: comprobante.trim() || null,
+        categoria:   Number(categoria),
+        fecha,
+        evento_id:   eventoId !== "" ? Number(eventoId) : null,
       });
       onSaved();
     } catch (err) {
@@ -657,11 +670,15 @@ function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
     }
   };
 
+  const categoriasEditables = Object.entries(MOVIMIENTO_CATEGORIA_LABEL).filter(
+    ([k]) => Number(k) !== MOVIMIENTO_CATEGORIA.ANULACION
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden">
+      <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl overflow-hidden max-h-[90dvh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 shrink-0">
           <div>
             <p className="text-sm font-black text-stone-800">Editar movimiento</p>
             <p className="text-xs text-stone-400 mt-0.5 truncate max-w-56">{m.descripcion}</p>
@@ -671,8 +688,8 @@ function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-4">
-          {/* Info solo lectura */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-5 py-4 overflow-y-auto">
+          {/* Monto — solo lectura */}
           <div className="flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2.5">
             <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0
               ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-100" : "bg-red-100"}`}>
@@ -681,7 +698,9 @@ function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
                 : <TrendingDown size={13} className="text-red-500" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs text-stone-400">{formatFecha(m.fecha)} · {MOVIMIENTO_CATEGORIA_LABEL[m.categoria]}</p>
+              <p className="text-[11px] text-stone-400">
+                {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "Ingreso" : "Egreso"} · Monto fijo
+              </p>
             </div>
             <span className={`text-sm font-black shrink-0
               ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}>
@@ -696,6 +715,53 @@ function ModalEditarMovimiento({ movimiento: m, onClose, onSaved, onError }) {
               type="text"
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
+              required
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors"
+            />
+          </div>
+
+          {/* Categoría */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Categoría</label>
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors bg-white"
+            >
+              {categoriasEditables.map(([k, l]) => (
+                <option key={k} value={k}>{l}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Evento relacionado */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">
+              Evento relacionado
+              <span className="font-normal text-stone-400 ml-1">(opcional)</span>
+            </label>
+            <select
+              value={eventoId}
+              onChange={(e) => setEventoId(e.target.value)}
+              className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
+                outline-none focus:border-amber-400 transition-colors bg-white"
+            >
+              <option value="">— Sin evento —</option>
+              {eventos.map((ev) => (
+                <option key={ev.id} value={ev.id}>{ev.titulo}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Fecha */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-bold text-stone-500">Fecha</label>
+            <input
+              type="date"
+              value={fecha}
+              onChange={(e) => setFecha(e.target.value)}
               required
               className="h-10 px-3 rounded-xl border border-stone-200 text-sm text-stone-700
                 outline-none focus:border-amber-400 transition-colors"

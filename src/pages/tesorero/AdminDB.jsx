@@ -59,6 +59,21 @@ export default function AdminDB() {
           confirmar={false}
         />
 
+        {/* ── Restaurar movimientos mal marcados ── */}
+        <AccionCard
+          icon={<RefreshCw size={20} className="text-blue-600" />}
+          iconBg="bg-blue-100"
+          titulo="Restaurar movimientos incorrectos"
+          descripcion="Revierte movimientos de ingreso que quedaron marcados como ANULACIÓN por error, pero cuyo abono sigue activo. Úsalo si el saldo de caja es menor de lo esperado."
+          etiqueta="Corrección"
+          etiquetaColor="bg-blue-50 text-blue-600"
+          botonLabel="Restaurar movimientos"
+          botonColor="bg-blue-500 hover:bg-blue-600"
+          endpoint="/admin/restaurar-movimientos"
+          api={api}
+          confirmar={false}
+        />
+
         {/* ── Backup ── */}
         <BackupCard />
 

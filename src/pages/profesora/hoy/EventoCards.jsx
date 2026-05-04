@@ -19,8 +19,8 @@ export function CardActivo({ evento: e, onClick }) {
     >
       {/* Cabecera */}
       <div className="flex items-start gap-3">
-        <div className="w-11 h-11 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
-          <CalendarDays size={20} className="text-teal-500" />
+        <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+          <CalendarDays size={18} className="text-teal-500" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
@@ -100,7 +100,7 @@ export function CardCompacto({ evento: e, onClick, muted }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-xl border px-4 py-3 cursor-pointer transition-colors
+      className={`bg-white rounded-2xl border px-4 py-3 cursor-pointer transition-colors active:opacity-80
         ${
           muted
             ? "border-stone-100 hover:border-stone-200 opacity-70"
@@ -109,16 +109,16 @@ export function CardCompacto({ evento: e, onClick, muted }) {
     >
       <div className="flex items-center gap-3">
         <div
-          className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${muted ? "bg-stone-50" : "bg-blue-50"}`}
+          className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${muted ? "bg-stone-50" : "bg-blue-50"}`}
         >
           <CalendarDays
-            size={16}
+            size={18}
             className={muted ? "text-stone-300" : "text-blue-400"}
           />
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+          <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
             <span
               className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPO_COLORS[e.tipo]}`}
             >
@@ -132,20 +132,20 @@ export function CardCompacto({ evento: e, onClick, muted }) {
           </div>
 
           <p
-            className={`text-sm font-bold truncate ${muted ? "text-stone-400" : "text-stone-700"}`}
+            className={`text-sm font-bold truncate ${muted ? "text-stone-400" : "text-stone-800"}`}
           >
             {e.titulo}
           </p>
 
           <p className="text-xs text-stone-400 flex items-center gap-1 mt-0.5">
-            <CalendarDays size={10} />
+            <CalendarDays size={11} />
             {mismaFecha(e.fecha_inicio, e.fecha_fin)
               ? formatFecha(e.fecha_inicio)
               : `${formatFecha(e.fecha_inicio)} → ${formatFecha(e.fecha_fin)}`}
             {e.hora_inicio && (
               <>
                 <span className="mx-1 text-stone-200">·</span>
-                <Clock size={10} />
+                <Clock size={11} />
                 {e.hora_inicio}
                 {e.hora_fin ? ` — ${e.hora_fin}` : ""}
               </>
@@ -153,7 +153,7 @@ export function CardCompacto({ evento: e, onClick, muted }) {
           </p>
         </div>
 
-        <ChevronRight size={14} className="text-stone-200 shrink-0" />
+        <ChevronRight size={16} className="text-stone-300 shrink-0" />
       </div>
     </div>
   );

@@ -62,13 +62,12 @@ export default function ResumenProfe() {
   const caja = resumen?.caja ?? {};
 
   return (
-    // h calculado: 100dvh - header mobile (3.5rem) - bottom nav (5rem) - padding wrapper (3rem) = 11.5rem
-    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
+    <div className="flex flex-col gap-3 h-[calc(100dvh-9rem)] lg:h-auto overflow-hidden w-full">
 
       {/* Header */}
       <div className="shrink-0">
-        <h1 className="text-xl font-black text-stone-800">Resumen general</h1>
-        <p className="text-sm text-stone-400 mt-0.5">
+        <h1 className="text-lg font-black text-stone-800">Resumen general</h1>
+        <p className="text-xs text-stone-400 mt-0.5">
           {new Date().toLocaleDateString("es-PE", {
             weekday: "long",
             day: "numeric",
@@ -107,7 +106,7 @@ export default function ResumenProfe() {
       </div>
 
       {/* Tabs */}
-      <div className="shrink-0 flex bg-stone-100 rounded-xl p-1 gap-1">
+      <div className="shrink-0 flex bg-stone-100 rounded-lg p-1 gap-1">
         {[
           ["todos", "Movimientos"],
           ["eventos", "Eventos"],
@@ -128,26 +127,26 @@ export default function ResumenProfe() {
         <div className="flex flex-col flex-1 min-h-0 gap-3">
 
           {/* Mini totales */}
-          <div className="shrink-0 grid grid-cols-3 gap-3">
-            <div className="bg-emerald-50 rounded-2xl p-3 text-center min-w-0 overflow-hidden">
-              <TrendingUp size={14} className="text-emerald-500 mx-auto mb-1" />
-              <p className="text-xs font-black text-emerald-700 leading-tight wrap-break-word">
-                S/{Number(totalIngresos).toFixed(2)}
-              </p>
-              <p className="text-[10px] text-emerald-600 font-medium">Ingresos</p>
+          <div className="shrink-0 grid grid-cols-3 gap-2">
+            <div className="bg-emerald-50 rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0 overflow-hidden">
+              <TrendingUp size={11} className="text-emerald-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-emerald-600 font-medium leading-none">Ingresos</p>
+                <p className="text-xs font-black text-emerald-700 leading-tight truncate">S/{Number(totalIngresos).toFixed(2)}</p>
+              </div>
             </div>
-            <div className="bg-red-50 rounded-2xl p-3 text-center min-w-0 overflow-hidden">
-              <TrendingDown size={14} className="text-red-400 mx-auto mb-1" />
-              <p className="text-xs font-black text-red-500 leading-tight wrap-break-word">
-                S/{Number(totalEgresos).toFixed(2)}
-              </p>
-              <p className="text-[10px] text-red-400 font-medium">Egresos</p>
+            <div className="bg-red-50 rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0 overflow-hidden">
+              <TrendingDown size={11} className="text-red-400 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-[10px] text-red-400 font-medium leading-none">Egresos</p>
+                <p className="text-xs font-black text-red-500 leading-tight truncate">S/{Number(totalEgresos).toFixed(2)}</p>
+              </div>
             </div>
-            <div className={`rounded-2xl p-3 text-center min-w-0 overflow-hidden ${saldo >= 0 ? "bg-amber-50" : "bg-orange-50"}`}>
-              <p className="text-[10px] font-medium text-stone-400 mb-1">Saldo</p>
-              <p className={`text-xs font-black leading-tight wrap-break-word ${saldo >= 0 ? "text-amber-700" : "text-orange-600"}`}>
-                S/{Number(saldo).toFixed(2)}
-              </p>
+            <div className={`rounded-lg px-2 py-1.5 flex items-center gap-1.5 min-w-0 overflow-hidden ${saldo >= 0 ? "bg-amber-50" : "bg-orange-50"}`}>
+              <div className="min-w-0">
+                <p className="text-[10px] text-stone-400 font-medium leading-none">Saldo</p>
+                <p className={`text-xs font-black leading-tight truncate ${saldo >= 0 ? "text-amber-700" : "text-orange-600"}`}>S/{Number(saldo).toFixed(2)}</p>
+              </div>
             </div>
           </div>
 
@@ -183,19 +182,19 @@ export default function ResumenProfe() {
                 <p className="text-center text-stone-400 text-sm py-10">Sin movimientos</p>
               ) : (
                 movimientos.map((m) => (
-                  <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+                  <div key={m.id} className="flex items-center gap-3 px-4 py-3.5">
                     <div
-                      className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0
                         ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "bg-emerald-50" : "bg-red-50"}`}
                     >
                       {m.tipo === MOVIMIENTO_TIPO.INGRESO ? (
-                        <TrendingUp size={15} className="text-emerald-500" />
+                        <TrendingUp size={18} className="text-emerald-500" />
                       ) : (
-                        <TrendingDown size={15} className="text-red-400" />
+                        <TrendingDown size={18} className="text-red-400" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="text-sm font-semibold text-stone-700 line-clamp-2 wrap-break-word">
+                      <p className="text-base font-semibold text-stone-700 line-clamp-1 wrap-break-word">
                         {m.descripcion}
                       </p>
                       <div className="flex items-center gap-2 flex-wrap">
@@ -211,7 +210,7 @@ export default function ResumenProfe() {
                       </div>
                     </div>
                     <span
-                      className={`text-sm font-bold shrink-0 max-w-24 wrap-break-word
+                      className={`text-base font-bold shrink-0 max-w-28 wrap-break-word
                         ${m.tipo === MOVIMIENTO_TIPO.INGRESO ? "text-emerald-600" : "text-red-500"}`}
                     >
                       {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{Number(m.monto).toFixed(2)}
@@ -295,17 +294,17 @@ function EventoCardProfe({ evento }) {
   };
 
   return (
-    <div className="flex flex-col px-4 py-3 gap-2">
+    <div className="flex flex-col px-4 py-3.5 gap-2">
       {/* Cabecera del evento */}
       <button
         onClick={toggleHistorial}
         className="flex items-center gap-3 w-full text-left"
       >
-        <div className="w-9 h-9 rounded-full bg-teal-50 flex items-center justify-center shrink-0">
-          <Users size={15} className="text-teal-500" />
+        <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0">
+          <Users size={18} className="text-teal-500" />
         </div>
         <div className="flex-1 min-w-0 overflow-hidden">
-          <p className="text-sm font-bold text-stone-700 line-clamp-2 wrap-break-word">
+          <p className="text-base font-bold text-stone-800 line-clamp-2 wrap-break-word">
             {evento.titulo}
           </p>
           <p className="text-xs text-stone-400 wrap-break-word">
@@ -325,21 +324,21 @@ function EventoCardProfe({ evento }) {
       {/* Resumen de pagos */}
       {evento.resumen_pagos && (
         <div className="ml-12 flex flex-col gap-1.5">
-          <div className="flex gap-3">
-            <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
+          <div className="flex gap-2">
+            <div className="flex-1 bg-stone-50 rounded-lg px-2 py-1.5">
               <p className="text-[10px] text-stone-400">Padres</p>
               <p className="text-xs font-black text-stone-700">
                 {evento.resumen_pagos.pagados}
                 <span className="font-normal text-stone-400">/{evento.resumen_pagos.total_padres}</span>
               </p>
             </div>
-            <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
+            <div className="flex-1 bg-emerald-50 rounded-lg px-2 py-1.5">
               <p className="text-[10px] text-emerald-600">Recaudado</p>
               <p className="text-xs font-black text-emerald-700">
                 S/ {Number(evento.resumen_pagos.monto_recaudado).toFixed(2)}
               </p>
             </div>
-            <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
+            <div className="flex-1 bg-amber-50 rounded-lg px-2 py-1.5">
               <p className="text-[10px] text-amber-600">Esperado</p>
               <p className="text-xs font-black text-amber-700">
                 S/ {Number(evento.resumen_pagos.monto_esperado).toFixed(2)}
@@ -349,7 +348,7 @@ function EventoCardProfe({ evento }) {
           {evento.resumen_pagos.monto_entregado > 0 && (
             <button
               onClick={(e) => { e.stopPropagation(); setModalRecibos(true); }}
-              className="flex items-center justify-between bg-red-50 hover:bg-red-100 rounded-xl px-3 py-2 w-full transition-colors"
+              className="flex items-center justify-between bg-red-50 hover:bg-red-100 rounded-lg px-2 py-1.5 w-full transition-colors"
             >
               <p className="text-[10px] text-red-500 font-bold">Entregado / Gastos</p>
               <p className="text-xs font-black text-red-500">
@@ -370,7 +369,7 @@ function EventoCardProfe({ evento }) {
 
       {/* Historial de precio — se carga al expandir */}
       {abierto && !loadingH && (
-        <div className="ml-12 border-t border-dashed border-stone-100 pt-2 mt-0.5">
+        <div className="ml-11 border-t border-dashed border-stone-100 pt-2 mt-0.5">
           {!historial || historial.length === 0 ? (
             <p className="text-[11px] text-stone-300 py-1">Sin cambios de precio</p>
           ) : (

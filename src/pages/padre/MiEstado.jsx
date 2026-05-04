@@ -1,8 +1,3 @@
-
-
-
-
-
 import { useEffect, useState } from "react";
 import {
   AlertTriangle, CheckCircle, CreditCard,
@@ -100,7 +95,7 @@ export default function MiEstado() {
   const totalCobros = cobrosPendientes
     .filter((ep) => !esFuturo(ep))
     .reduce(
-      (s, ep) => s + Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
+      (s, ep) => s + Number(ep.monto_asignado ?? ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
     );
 
   // El saldo del backend puede incluir cobros futuros; los restamos para no confundir al padre
@@ -208,7 +203,7 @@ export default function MiEstado() {
                 : ep.evento?.fecha_fin
                 ? `Hasta: ${formatFecha(ep.evento.fecha_fin)}`
                 : "Sin fecha límite"}
-              monto={`S/ ${(Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0)).toFixed(2)}`}
+              monto={`S/ ${(Number(ep.monto_asignado ?? ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0)).toFixed(2)}`}
               montoColor={futuro ? "text-stone-400" : "text-orange-600"}
               badge={futuro ? "Próximo" : "Pendiente"}
               badgeColor={futuro ? "bg-stone-100 text-stone-400" : "bg-orange-50 text-orange-600"}

@@ -83,7 +83,7 @@ export default function DetalleEvento({ evento: e, fecha, onVolver, onToast }) {
   );
 
   return (
-    <div className="flex flex-col gap-0 h-[calc(100dvh-11.5rem)] w-full overflow-hidden">
+    <div className="flex flex-col gap-0 h-[calc(100dvh-10rem)] w-full overflow-hidden">
 
       {/* ══ ZONA ESTÁTICA ════════════════════════════════════════════════════ */}
       <div className="shrink-0 flex flex-col gap-4 pb-4">

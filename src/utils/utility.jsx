@@ -105,23 +105,19 @@ export const StatCardResumen = ({
   trend,
 }) => {
   return (
-    <div className="bg-white rounded-2xl border border-stone-100 p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div
-          className={`w-9 h-9 rounded-xl ${iconBg} flex items-center justify-center`}
-        >
-          <Icon size={17} className={iconColor} />
+    <div className="bg-white rounded-xl border border-stone-100 px-3 py-2">
+      <div className="flex items-center gap-2.5">
+        <div className={`w-8 h-8 rounded-lg ${iconBg} flex items-center justify-center shrink-0`}>
+          <Icon size={15} className={iconColor} />
         </div>
-        {trend === "up" && (
-          <TrendingUp size={13} className="text-emerald-400" />
-        )}
-        {trend === "down" && (
-          <TrendingDown size={13} className="text-red-400" />
-        )}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-stone-400">{label}</p>
+          <p className="text-sm font-black text-stone-800 leading-tight truncate">{value}</p>
+          {sub && <p className="text-[10px] text-stone-400">{sub}</p>}
+        </div>
+        {trend === "up" && <TrendingUp size={13} className="text-emerald-400 shrink-0" />}
+        {trend === "down" && <TrendingDown size={13} className="text-red-400 shrink-0" />}
       </div>
-      <p className="text-xl font-black text-stone-800 leading-tight">{value}</p>
-      {sub && <p className="text-[11px] text-stone-400 mt-0.5">{sub}</p>}
-      <p className="text-xs text-stone-400 mt-1">{label}</p>
     </div>
   );
 };

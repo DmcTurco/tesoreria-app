@@ -78,7 +78,7 @@ export default function ExportarImportar() {
   };
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-10rem)] lg:h-auto overflow-hidden w-full">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* Header */}

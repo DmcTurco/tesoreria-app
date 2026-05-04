@@ -140,8 +140,8 @@ export default function EscanearQR() {
   const eventoSeleccionado = eventosHoy.find((e) => String(e.id) === eventoId);
 
   return (
-    // h calculado: 100dvh - header mobile (3.5rem) - bottom nav (5rem) - padding wrapper (3rem) = 11.5rem
-    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
+    // h calculado: 100dvh - header mobile (3.5rem) - bottom nav (3.5rem) - padding wrapper (3rem) = 10rem
+    <div className="flex flex-col gap-4 h-[calc(100dvh-10rem)] lg:h-auto overflow-hidden w-full">
 
       {/* Header */}
       <div className="shrink-0">

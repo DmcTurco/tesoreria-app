@@ -103,7 +103,7 @@ export default function NuevoAbono() {
 
   return (
     /* Ocupa exactamente el espacio disponible dentro de AppLayout */
-    <div className="flex flex-col h-[calc(100dvh-11.5rem)] lg:h-[calc(100vh-3rem)] w-full gap-4">
+    <div className="flex flex-col h-[calc(100dvh-10rem)] lg:h-[calc(100vh-3rem)] w-full gap-4">
       {toast && <Toast msg={toast.msg} type={toast.type} />}
 
       {/* ── 1. Header ───────────────────────────────────────────────── */}

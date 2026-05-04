@@ -227,8 +227,8 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
       </nav>
 
       {/* ── Main content ─────────────────────────────────────────────── */}
-      <main className="flex-1 lg:ml-56 pt-14 lg:pt-0 pb-20 lg:pb-0 min-h-screen">
-        <div className="max-w-5xl mx-auto px-4 py-6">{children}</div>
+      <main className="flex-1 lg:ml-56 pt-14 lg:pt-0 pb-14 lg:pb-0 min-h-screen">
+        <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">{children}</div>
       </main>
     </div>
   );

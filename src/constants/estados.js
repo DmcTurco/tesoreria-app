@@ -6,7 +6,7 @@ export const EVENTO_TIPO = {
     GUARDIA: 0, FAENA: 1, REUNION: 2, CUOTA: 3, ACTIVIDAD: 4,
 };
 export const EVENTO_TIPO_LABEL = {
-    0: "Guardia", 1: "Faena", 2: "Reunión", 3: "Cuota", 4: "Actividad", // ← Cobro → Cuota
+    0: "Bapers", 1: "Faena", 2: "Reunión", 3: "Cuota", 4: "Actividad",
 };
 
 export const EVENTO_ESTADO = { ACTIVO: 0, CERRADO: 1 };

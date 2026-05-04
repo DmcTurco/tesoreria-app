@@ -7,7 +7,7 @@ import { Field, today, Row, Toast } from "../../../utils/utility";
 const TIPOS = [
   {
     value: "0",
-    label: "Guardia",
+    label: "Bapers",
     desc: "Rotación de padres por fecha",
     color: "bg-amber-50 text-amber-700 border-amber-200",
   },
@@ -62,6 +62,7 @@ export default function CrearEvento({ onBack, onCreated }) {
   const tipo = form.tipo;
   const isGuardia = tipo === "0";
   const isCobro = tipo === "3";
+  const isActividad = tipo === "4";
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -81,18 +82,15 @@ export default function CrearEvento({ onBack, onCreated }) {
       showToast("La fecha fin no puede ser antes que la fecha inicio", "err");
       return false;
     }
-    if (!isCobro) {
+    if (!isCobro && !isActividad) {
       if (!form.hora_inicio || !form.hora_fin) {
         showToast("Las horas de inicio y fin son obligatorias", "err");
         return false;
       }
-      if (form.hora_fin <= form.hora_inicio) {
-        showToast(
-          "La hora de fin debe ser después de la hora de inicio",
-          "err",
-        );
-        return false;
-      }
+    }
+    if (!isCobro && form.hora_inicio && form.hora_fin && form.hora_fin <= form.hora_inicio) {
+      showToast("La hora de fin debe ser después de la hora de inicio", "err");
+      return false;
     }
     if (isGuardia) {
       if (form.dias_semana.length === 0) {
@@ -133,10 +131,10 @@ export default function CrearEvento({ onBack, onCreated }) {
       lugar: form.lugar || null,
       fecha_inicio: form.fecha_inicio,
       fecha_fin: form.fecha_fin || null,
-      hora_inicio: isCobro ? null : form.hora_inicio,
-      hora_fin: isCobro ? null : form.hora_fin,
+      hora_inicio: isCobro ? null : (form.hora_inicio || null),
+      hora_fin: isCobro ? null : (form.hora_fin || null),
       tiene_multa: isCobro ? false : form.tiene_multa,
-      multa_monto: Number(form.multa_monto),
+      multa_monto: isActividad ? (Number(form.multa_monto) || 0) : Number(form.multa_monto),
       padres_por_dia: isGuardia ? Number(form.padres_por_dia) : null,
       dias_semana: isGuardia ? form.dias_semana : null,
     };
@@ -185,6 +183,7 @@ export default function CrearEvento({ onBack, onCreated }) {
           set={set}
           isGuardia={isGuardia}
           isCobro={isCobro}
+          isActividad={isActividad}
           setForm={setForm}
         />
       )}
@@ -221,7 +220,7 @@ export default function CrearEvento({ onBack, onCreated }) {
 }
 
 // ── Paso 1: Datos básicos ─────────────────────────────────────────────────────
-function Paso1({ form, set, isGuardia, isCobro, setForm }) {
+function Paso1({ form, set, isGuardia, isCobro, isActividad, setForm }) {
   const DIAS = [
     { v: 1, l: "L" },
     { v: 2, l: "M" },
@@ -252,7 +251,13 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
           {TIPOS.map((t) => (
             <button
               key={t.value}
-              onClick={() => setForm((p) => ({ ...p, tipo: t.value }))}
+              onClick={() => setForm((p) => ({
+                ...p,
+                tipo:        t.value,
+                multa_monto: t.value === "4" ? "" : p.multa_monto,
+                hora_inicio: t.value === "3" ? "" : (p.hora_inicio || "07:00"),
+                hora_fin:    t.value === "3" ? "" : (p.hora_fin    || "18:00"),
+              }))}
               className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 text-left transition-all
                 ${form.tipo === t.value ? t.color : "bg-white border-stone-200 hover:border-stone-300"}`}
             >
@@ -313,13 +318,13 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
       {!isCobro && (
         <div className="grid grid-cols-2 gap-3">
           <Field
-            label="Hora inicio"
+            label={isActividad ? "Hora inicio (opcional)" : "Hora inicio"}
             type="time"
             value={form.hora_inicio}
             onChange={set("hora_inicio")}
           />
           <Field
-            label="Hora fin"
+            label={isActividad ? "Hora fin (opcional)" : "Hora fin"}
             type="time"
             value={form.hora_fin}
             onChange={set("hora_fin")}
@@ -378,6 +383,22 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
             Se asignará a cada padre automáticamente.
           </p>
         </div>
+      ) : isActividad ? (
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-bold text-stone-600">
+            Monto a devolver por padre (S/)
+          </label>
+          <input
+            type="number"
+            value={form.multa_monto}
+            onChange={set("multa_monto")}
+            placeholder="Ej: 30.00"
+            className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
+          />
+          <p className="text-[11px] text-stone-400">
+            Opcional. Si lo indicas, se usará para hacer seguimiento de pagos.
+          </p>
+        </div>
       ) : (
         <div className="flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2.5">
           <input
@@ -412,7 +433,8 @@ function Paso1({ form, set, isGuardia, isCobro, setForm }) {
 
 // ── Paso 2: Revisión ──────────────────────────────────────────────────────────
 function PasoRevision({ form, tipo }) {
-  const isCobro = tipo === "3";
+  const isCobro     = tipo === "3";
+  const isActividad = tipo === "4";
   return (
     <div className="flex flex-col gap-4">
       <p className="text-xs font-bold text-stone-500 uppercase tracking-wide">
@@ -437,6 +459,11 @@ function PasoRevision({ form, tipo }) {
         {isCobro ? (
           <Row
             label="Monto del cobro"
+            value={`S/ ${Number(form.multa_monto).toFixed(2)}`}
+          />
+        ) : isActividad && Number(form.multa_monto) > 0 ? (
+          <Row
+            label="Monto a devolver"
             value={`S/ ${Number(form.multa_monto).toFixed(2)}`}
           />
         ) : (

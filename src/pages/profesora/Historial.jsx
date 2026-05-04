@@ -71,36 +71,36 @@ export default function Historial() {
           ordenados.map((e) => (
             <div
               key={e.id}
-              className="flex items-start gap-3 px-4 py-3 cursor-pointer hover:bg-stone-50 transition-colors"
+              className="flex items-center gap-4 px-4 py-4 cursor-pointer hover:bg-stone-50 active:bg-stone-100 transition-colors"
               onClick={() => setSelected(e)}
             >
-              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center shrink-0 mt-0.5">
-                <CalendarDays size={17} className="text-teal-500" />
+              <div className="w-12 h-12 rounded-2xl bg-teal-50 flex items-center justify-center shrink-0">
+                <CalendarDays size={22} className="text-teal-500" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${TIPO_COLORS[e.tipo]}`}
+                    className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${TIPO_COLORS[e.tipo]}`}
                   >
                     {EVENTO_TIPO_LABEL[e.tipo]}
                   </span>
                   {e.estado === EVENTO_ESTADO.CERRADO && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-400">
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-400">
                       Cerrado
                     </span>
                   )}
                 </div>
-                <p className="text-sm font-bold text-stone-700 truncate">
+                <p className="text-base font-bold text-stone-800 truncate">
                   {e.titulo}
                 </p>
-                <p className="text-xs text-stone-400">
+                <p className="text-sm text-stone-400 mt-0.5">
                   {formatFecha(e.fecha_inicio)}
                   {e.fecha_fin ? ` → ${formatFecha(e.fecha_fin)}` : ""}
                 </p>
               </div>
               <ChevronRight
-                size={15}
-                className="text-stone-300 shrink-0 mt-1"
+                size={18}
+                className="text-stone-300 shrink-0"
               />
             </div>
           ))

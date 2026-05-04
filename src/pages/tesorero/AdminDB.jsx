@@ -11,7 +11,7 @@ export default function AdminDB() {
 
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-10rem)] lg:h-auto overflow-hidden w-full">
       {/* Header */}
       <div className="shrink-0">
         <h1 className="text-xl font-black text-stone-800">Administración DB</h1>

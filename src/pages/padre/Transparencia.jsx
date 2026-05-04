@@ -56,7 +56,7 @@ export default function Transparencia() {
   }, [tab]);
 
   return (
-    <div className="flex flex-col gap-4 h-[calc(100dvh-11.5rem)] lg:h-auto overflow-hidden w-full">
+    <div className="flex flex-col gap-4 h-[calc(100dvh-10rem)] lg:h-auto overflow-hidden w-full">
 
       {/* Header */}
       <div className="shrink-0">

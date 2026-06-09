@@ -169,36 +169,16 @@ function FechaCard({ f, evento, esTesorero, onRefresh, onToast }) {
         {/* Chips de padres */}
         {(f.padres ?? []).length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {evento.tiene_turnos === 1
-              ? // Con turnos: agrupar por padre_id → un chip por padre con modal
-                Object.values(
-                  (f.padres ?? []).reduce((acc, ep) => {
-                    if (!acc[ep.padre_id]) acc[ep.padre_id] = [];
-                    acc[ep.padre_id].push(ep);
-                    return acc;
-                  }, {})
-                ).map((eps) => (
-                  <PadreChipWrapper
-                    key={eps[0].padre_id}
-                    eps={eps}
-                    evento={evento}
-                    esTesorero={esTesorero}
-                    onRefresh={onRefresh}
-                    onToast={onToast}
-                  />
-                ))
-              : // Sin turnos: chip individual por registro
-                (f.padres ?? []).map((ep) => (
-                  <PadreChipWrapper
-                    key={ep.id}
-                    eps={ep}
-                    evento={evento}
-                    esTesorero={esTesorero}
-                    onRefresh={onRefresh}
-                    onToast={onToast}
-                  />
-                ))
-            }
+            {(f.padres ?? []).map((ep) => (
+              <PadreChipWrapper
+                key={ep.id}
+                ep={ep}
+                evento={evento}
+                esTesorero={esTesorero}
+                onRefresh={onRefresh}
+                onToast={onToast}
+              />
+            ))}
           </div>
         ) : (
           <p className="text-[10px] text-stone-300 italic">Sin padres asignados</p>
@@ -209,16 +189,12 @@ function FechaCard({ f, evento, esTesorero, onRefresh, onToast }) {
 }
 
 // ── Chip de padre con gestión ─────────────────────────────────────────────────
-// Con turnos: agrupa ambos registros en un solo chip que abre ModalTurnos
-// Sin turnos: comportamiento original
-function PadreChipWrapper({ eps, evento, esTesorero, onRefresh, onToast }) {
-  // eps puede ser un array (con turnos) o un solo objeto (sin turnos)
-  const hasTurnos = evento.tiene_turnos === 1 && Array.isArray(eps);
-
-  if (hasTurnos) {
+// Con turnos_estado: abre ModalTurnos. Sin turnos: comportamiento original.
+function PadreChipWrapper({ ep, evento, esTesorero, onRefresh, onToast }) {
+  if (ep.turnos_estado != null) {
     return (
       <PadreChipConTurnos
-        eps={eps}
+        ep={ep}
         evento={evento}
         esTesorero={esTesorero}
         onRefresh={onRefresh}
@@ -229,7 +205,7 @@ function PadreChipWrapper({ eps, evento, esTesorero, onRefresh, onToast }) {
 
   return (
     <PadreChip
-      ep={Array.isArray(eps) ? eps[0] : eps}
+      ep={ep}
       evento={evento}
       esTesorero={esTesorero}
       onRefresh={onRefresh}
@@ -238,19 +214,17 @@ function PadreChipWrapper({ eps, evento, esTesorero, onRefresh, onToast }) {
   );
 }
 
-// Chip agrupado para eventos con 2 turnos
-function PadreChipConTurnos({ eps, evento, esTesorero, onRefresh, onToast }) {
+// Chip para padres con turnos (bapers)
+function PadreChipConTurnos({ ep, evento, esTesorero, onRefresh, onToast }) {
   const [modalOpen, setModalOpen] = useState(false);
 
-  const epEntrada = eps.find((e) => Number(e.turno) === 1);
-  const epSalida  = eps.find((e) => Number(e.turno) === 2);
+  const estados        = ep.turnos_estado ?? [0, 0];
+  const entradaPresente = estados[0] === 1;
+  const salidaPresente  = estados[1] === 1;
+  const ambosPresentes  = entradaPresente && salidaPresente;
+  const algunPresente   = entradaPresente || salidaPresente;
 
-  const estadoEntrada  = Number(epEntrada?.estado ?? 0);
-  const estadoSalida   = Number(epSalida?.estado  ?? 0);
-  const ambosPresentes = estadoEntrada === 1 && estadoSalida === 1;
-  const algunPresente  = estadoEntrada === 1 || estadoSalida === 1;
-
-  const padre = eps[0]?.padre;
+  const padre = ep.padre;
 
   const chipBg = ambosPresentes
     ? "bg-emerald-50 border-emerald-200"
@@ -275,11 +249,11 @@ function PadreChipConTurnos({ eps, evento, esTesorero, onRefresh, onToast }) {
         {/* Indicadores E / S */}
         <div className="flex gap-0.5 ml-0.5">
           <span className={`text-[9px] font-black px-1 py-0.5 rounded
-            ${estadoEntrada === 1 ? "bg-emerald-400 text-white" : "bg-stone-200 text-stone-400"}`}>
+            ${entradaPresente ? "bg-emerald-400 text-white" : "bg-stone-200 text-stone-400"}`}>
             E
           </span>
           <span className={`text-[9px] font-black px-1 py-0.5 rounded
-            ${estadoSalida === 1 ? "bg-emerald-400 text-white" : "bg-stone-200 text-stone-400"}`}>
+            ${salidaPresente ? "bg-emerald-400 text-white" : "bg-stone-200 text-stone-400"}`}>
             S
           </span>
         </div>
@@ -287,7 +261,7 @@ function PadreChipConTurnos({ eps, evento, esTesorero, onRefresh, onToast }) {
 
       {modalOpen && (
         <ModalTurnos
-          eps={eps}
+          ep={ep}
           evento={evento}
           onClose={() => setModalOpen(false)}
           onRefresh={() => { onRefresh(); setModalOpen(false); }}
@@ -299,41 +273,39 @@ function PadreChipConTurnos({ eps, evento, esTesorero, onRefresh, onToast }) {
 }
 
 // Modal para marcar turnos individualmente
-function ModalTurnos({ eps, evento, onClose, onRefresh, onToast }) {
-  const [loading,   setLoading]   = useState(null); // turno en proceso
-  const [modalEx,   setModalEx]   = useState(false);
+function ModalTurnos({ ep, evento, onClose, onRefresh, onToast }) {
+  const [loading, setLoading] = useState(null); // turnoNum en proceso (1 o 2)
+  const [modalEx, setModalEx] = useState(false);
   const api = useApi();
 
-  const padre    = eps[0]?.padre;
-  const epRef    = eps[0]; // referencia para exonerar/quitar (cualquier turno sirve)
-  const fechaStr = epRef?.fecha
-    ? String(epRef.fecha).slice(0, 10)
-    : null;
+  const padre    = ep.padre;
+  const fechaStr = ep.fecha ? String(ep.fecha).slice(0, 10) : null;
+  const estados  = ep.turnos_estado ?? [0, 0];
 
-  const epEntrada = eps.find((e) => Number(e.turno) === 1);
-  const epSalida  = eps.find((e) => Number(e.turno) === 2);
+  const montoPorTurno = Number(ep.monto_asignado ?? 0) / 2;
 
-  const marcar = async (ep) => {
-    if (Number(ep.estado) === 1) return;
-    setLoading(Number(ep.turno));
+  const marcar = async (turnoNum) => {
+    const idx = turnoNum === 1 ? 0 : 1;
+    if (estados[idx] === 1) return;
+    setLoading(turnoNum);
     try {
       await api.post(`/eventos/${evento.id}/asistencia`, {
         padre_id: ep.padre_id,
         fecha:    fechaStr,
-        turno:    Number(ep.turno),
+        turno:    turnoNum,
       });
-      onToast("Asistencia registrada");
+      onToast("Turno registrado");
       onRefresh();
     } catch (e) {
-      onToast(e.message ?? "Error al registrar asistencia", "err");
+      onToast(e.message ?? "Error al registrar", "err");
     } finally {
       setLoading(null);
     }
   };
 
   const turnosData = [
-    { label: "Entrada", ep: epEntrada },
-    { label: "Salida",  ep: epSalida  },
+    { label: "Entrada", turnoNum: 1, idx: 0 },
+    { label: "Salida",  turnoNum: 2, idx: 1 },
   ];
 
   return (
@@ -364,19 +336,11 @@ function ModalTurnos({ eps, evento, onClose, onRefresh, onToast }) {
 
         {/* Turnos */}
         <div className="flex flex-col gap-2">
-          {turnosData.map(({ label, ep }) => {
-            if (!ep) return (
-              <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 bg-stone-50 border-stone-100 opacity-40">
-                <Clock size={14} className="text-stone-300" />
-                <p className="text-sm text-stone-400">Turno {label} — sin asignar</p>
-              </div>
-            );
-            const presente = Number(ep.estado) === 1;
-            const monto    = ep.monto_asignado ?? 0;
-
+          {turnosData.map(({ label, turnoNum, idx }) => {
+            const presente = estados[idx] === 1;
             return (
               <div
-                key={Number(ep.turno)}
+                key={turnoNum}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all
                   ${presente ? "bg-emerald-50 border-emerald-200" : "bg-stone-50 border-stone-200"}`}
               >
@@ -392,17 +356,19 @@ function ModalTurnos({ eps, evento, onClose, onRefresh, onToast }) {
                     Turno {label}
                   </p>
                   <p className="text-[10px] text-stone-400">
-                    {presente ? "Asistió" : `Pendiente · multa S/ ${Number(monto).toFixed(2)}`}
+                    {presente
+                      ? "Asistió"
+                      : `Pendiente · multa S/ ${montoPorTurno.toFixed(2)}`}
                   </p>
                 </div>
                 {!presente && evento.estado === EVENTO_ESTADO.ACTIVO && (
                   <button
-                    onClick={() => marcar(ep)}
-                    disabled={loading === Number(ep.turno)}
+                    onClick={() => marcar(turnoNum)}
+                    disabled={loading === turnoNum}
                     className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600
                       text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60"
                   >
-                    {loading === Number(ep.turno)
+                    {loading === turnoNum
                       ? <Loader2 size={12} className="animate-spin" />
                       : <><Check size={12} strokeWidth={3} /> Marcar</>
                     }
@@ -424,7 +390,7 @@ function ModalTurnos({ eps, evento, onClose, onRefresh, onToast }) {
               <ShieldOff size={12} /> Exonerar
             </button>
             <BotonQuitarPadre
-              ep={epRef}
+              ep={ep}
               evento={evento}
               onDone={() => { onClose(); onRefresh(); onToast("Asignación eliminada"); }}
               onError={onToast}
@@ -433,10 +399,9 @@ function ModalTurnos({ eps, evento, onClose, onRefresh, onToast }) {
         )}
       </div>
 
-      {/* Modal exonerar (reutiliza el existente) */}
       {modalEx && (
         <ModalExonerar
-          ep={{ ...epRef, fecha: fechaStr }}
+          ep={{ ...ep, fecha: fechaStr }}
           evento={evento}
           onClose={() => setModalEx(false)}
           onDone={() => { setModalEx(false); onClose(); onRefresh(); onToast("Padre exonerado"); }}
@@ -504,16 +469,9 @@ function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
             {ep.padre?.nombre?.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "?"}
           </span>
         </div>
-        <div className="flex flex-col leading-none">
-          <span className="text-[11px] font-semibold text-stone-700">
-            {ep.padre?.nombre?.split(" ").slice(0, 2).join(" ")}
-          </span>
-          {ep.turno && (
-            <span className="text-[9px] text-stone-400 font-medium">
-              {ep.turno === 1 ? "Entrada" : "Salida"}
-            </span>
-          )}
-        </div>
+        <span className="text-[11px] font-semibold text-stone-700 leading-none">
+          {ep.padre?.nombre?.split(" ").slice(0, 2).join(" ")}
+        </span>
         <Icon size={11} className={cfg.color} strokeWidth={2.5} title={cfg.label} />
 
         {/* Marcar asistencia — solo pendientes */}

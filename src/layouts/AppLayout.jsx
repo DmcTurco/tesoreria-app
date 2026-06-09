@@ -52,10 +52,23 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
 
   const nav = NAV_BY_ROLE[user?.role] ?? NAV_TESORERO;
 
-  const handleLogout = () => {
-    localStorage.removeItem("auth_token");
-    localStorage.removeItem("user");
-    navigate("/role");
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem("auth_token");
+      if (token) {
+        const baseUrl = `${window.location.protocol}//${window.location.hostname}/api`;
+        await fetch(`${baseUrl}/logout`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        });
+      }
+    } catch {
+      // Si falla la red igual limpiamos localmente
+    } finally {
+      localStorage.removeItem("auth_token");
+      localStorage.removeItem("user");
+      navigate("/role");
+    }
   };
 
   const initials =

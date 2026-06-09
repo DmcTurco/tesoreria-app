@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Database, RefreshCw, AlertTriangle, CheckCircle,
-  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench, Download,
+  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench, Download, Upload,
 } from "lucide-react";
 import useApi from "../../hook/useApi";
 import { getApiBaseUrl, getHeaders } from "../../services/api";
@@ -76,6 +76,9 @@ export default function AdminDB() {
 
         {/* ── Backup ── */}
         <BackupCard />
+
+        {/* ── Restore ── */}
+        <RestoreCard />
 
         {/* ── Migrate Fresh (destructivo) ── */}
         <AccionCard
@@ -176,6 +179,118 @@ function BackupCard() {
           {running
             ? <><Loader2 size={15} className="animate-spin" /> Generando backup...</>
             : <><Download size={15} /> Descargar backup</>}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Restore ──────────────────────────────────────────────────────────────────
+function RestoreCard() {
+  const [running,  setRunning]  = useState(false);
+  const [error,    setError]    = useState(null);
+  const [ok,       setOk]       = useState(false);
+  const [mensaje,  setMensaje]  = useState(null);
+  const [archivo,  setArchivo]  = useState(null);
+  const inputRef = useRef(null);
+
+  const handleFile = (e) => {
+    setArchivo(e.target.files[0] ?? null);
+    setOk(false);
+    setError(null);
+    setMensaje(null);
+  };
+
+  const handleRestore = async () => {
+    if (!archivo) return;
+    setRunning(true);
+    setError(null);
+    setOk(false);
+    setMensaje(null);
+
+    try {
+      const { getApiBaseUrl, getHeaders } = await import("../../services/api");
+      const formData = new FormData();
+      formData.append("backup", archivo);
+
+      const headers = getHeaders();
+      delete headers["Content-Type"]; // dejar que el browser lo ponga con boundary
+
+      const res = await fetch(`${getApiBaseUrl()}/admin/restore`, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
+
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || json.success === false) throw new Error(json.message ?? `Error ${res.status}`);
+
+      setOk(true);
+      setMensaje(json.message);
+      setArchivo(null);
+      if (inputRef.current) inputRef.current.value = "";
+    } catch (e) {
+      setError(e.message ?? "Error al restaurar");
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-stone-50">
+        <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center shrink-0">
+          <Upload size={20} className="text-violet-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-black text-stone-800">Restaurar desde backup</p>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">
+              Importar
+            </span>
+          </div>
+          <p className="text-xs text-stone-400 mt-0.5">
+            Sube un archivo JSON generado por el backup para restaurar los datos en la base de datos local.
+          </p>
+        </div>
+      </div>
+
+      <div className="px-5 py-4 flex flex-col gap-3">
+        {/* Selector de archivo */}
+        <label className="flex items-center gap-3 h-11 px-4 rounded-xl border border-dashed border-stone-200
+          hover:border-violet-300 hover:bg-violet-50 transition-colors cursor-pointer">
+          <Upload size={15} className="text-stone-400 shrink-0" />
+          <span className="text-xs text-stone-400 truncate flex-1">
+            {archivo ? archivo.name : "Seleccionar archivo backup.json"}
+          </span>
+          <input ref={inputRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
+        </label>
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-center gap-2 bg-red-50 rounded-xl px-3 py-2.5">
+            <AlertTriangle size={14} className="text-red-400 shrink-0" />
+            <p className="text-xs text-red-500 font-medium">{error}</p>
+          </div>
+        )}
+
+        {/* Éxito */}
+        {ok && (
+          <div className="flex items-center gap-2 bg-emerald-50 rounded-xl px-3 py-2.5">
+            <CheckCircle size={14} className="text-emerald-500 shrink-0" />
+            <p className="text-xs text-emerald-700 font-semibold">{mensaje}</p>
+          </div>
+        )}
+
+        <button
+          onClick={handleRestore}
+          disabled={running || !archivo}
+          className="flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-bold
+            text-white bg-violet-500 hover:bg-violet-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {running
+            ? <><Loader2 size={15} className="animate-spin" /> Restaurando...</>
+            : <><Upload size={15} /> Restaurar backup</>}
         </button>
       </div>
     </div>

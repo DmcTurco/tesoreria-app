@@ -13,15 +13,16 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
     const [tab, setTab] = useState("info");
     const [evento, setEvento] = useState(inicial);
     const [form, setForm] = useState({
-        titulo:       evento.titulo      ?? "",
-        descripcion:  evento.descripcion ?? "",
-        lugar:        evento.lugar       ?? "",
-        tiene_multa:  evento.tiene_multa ?? false,
-        multa_monto:  evento.multa_monto ?? "10",
+        titulo:        evento.titulo       ?? "",
+        descripcion:   evento.descripcion  ?? "",
+        lugar:         evento.lugar        ?? "",
+        tiene_multa:   evento.tiene_multa  ?? false,
+        tiene_turnos:  evento.tiene_turnos ?? 0,
+        multa_monto:   evento.multa_monto  ?? "10",
         fecha_inicio: evento.fecha_inicio ? evento.fecha_inicio.slice(0, 10) : "",
         fecha_fin:    evento.fecha_fin    ? evento.fecha_fin.slice(0, 10)    : "",
-        hora_inicio:  evento.hora_inicio  ?? "",
-        hora_fin:     evento.hora_fin     ?? "",
+        hora_inicio:  evento.hora_inicio  ? evento.hora_inicio.slice(0, 5)  : "",
+        hora_fin:     evento.hora_fin     ? evento.hora_fin.slice(0, 5)     : "",
     });
     const [loading, setLoading] = useState(false);
     const api = useApi();
@@ -67,6 +68,7 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                 descripcion:  form.descripcion  || null,
                 lugar:        form.lugar        || null,
                 tiene_multa:  isCobro ? false : form.tiene_multa,
+                tiene_turnos: (evento.tipo === 0) ? form.tiene_turnos : 0,
                 multa_monto:  Number(form.multa_monto),
                 fecha_inicio: form.fecha_inicio,
                 fecha_fin:    form.fecha_fin    || null,
@@ -200,6 +202,32 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                                         placeholder="10"
                                     />
                                 )}
+                            </div>
+                        )}
+
+                        {/* Toggle 2 turnos — solo guardias */}
+                        {evento.tipo === 0 && (
+                            <div className="flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2.5">
+                                <input
+                                    type="checkbox"
+                                    id="tiene_turnos_edit"
+                                    checked={form.tiene_turnos === 1}
+                                    disabled={evento.tiene_turnos === 1} // no se puede desactivar
+                                    onChange={(e) => setForm((p) => ({ ...p, tiene_turnos: e.target.checked ? 1 : 0 }))}
+                                    className="w-4 h-4 accent-amber-500 disabled:opacity-50"
+                                />
+                                <div className="flex-1">
+                                    <label htmlFor="tiene_turnos_edit" className="text-xs font-semibold text-stone-600 cursor-pointer block">
+                                        Tiene 2 turnos (entrada y salida)
+                                    </label>
+                                    {form.tiene_turnos === 1 && (
+                                        <p className="text-[11px] text-stone-400 mt-0.5">
+                                            {evento.tiene_turnos === 1
+                                                ? "Ya activado — las filas existentes tienen turno asignado"
+                                                : "Al guardar se dividirán las asignaciones existentes en 2 turnos"}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
                         )}
 

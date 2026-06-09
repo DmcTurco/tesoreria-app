@@ -21,7 +21,7 @@ export default function Pagos() {
   const [toast, setToast] = useState(null);
   const [abonoAAnular, setAbonoAAnular] = useState(null);
 
-  const { loading, error, abonos, getAbonos } = useAbono();
+  const { loading, error, abonos, totalesPorPadre, getAbonos } = useAbono();
   const { loading: loadingPadres, padres, getPadres } = usePadres();
 
   useEffect(() => {
@@ -135,6 +135,7 @@ export default function Pagos() {
                 key={padre.id}
                 padre={padre}
                 abonos={abonos}
+                total={totalesPorPadre[padre.id] ?? 0}
                 handleAnular={handleAnular}
               />
             ))
@@ -156,7 +157,7 @@ export default function Pagos() {
 }
 
 // ── Grupo por padre ───────────────────────────────────────────────────────────
-function GrupoPadre({ padre, abonos, handleAnular }) {
+function GrupoPadre({ padre, abonos, total, handleAnular }) {
   const [padreAbierto, setPadreAbierto] = useState(false);
   const [expandido, setExpandido] = useState(null);
 
@@ -177,11 +178,7 @@ function GrupoPadre({ padre, abonos, handleAnular }) {
           <p className="text-xs text-stone-400">{padre.codigo} · {padre.hijo}</p>
         </div>
         <span className="text-xs font-black text-emerald-600">
-          S/{" "}
-          {abonos
-            .filter((a) => a.estado === 0)
-            .reduce((s, a) => s + (a.monto_neto !== null ? Number(a.monto_neto) : Number(a.monto)), 0)
-            .toFixed(2)}
+          S/ {Number(total).toFixed(2)}
         </span>
         <div
           className={`w-7 h-7 flex items-center justify-center rounded-full bg-stone-200 transition-transform duration-200 shrink-0 ${padreAbierto ? "rotate-180" : ""}`}

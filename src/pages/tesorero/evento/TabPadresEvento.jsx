@@ -9,6 +9,7 @@ import {
   UserMinus,
   CalendarCheck,
   AlertTriangle,
+  UserCheck,
 } from "lucide-react";
 import { EVENTO_ESTADO } from "../../../constants/estados";
 import useApi from "@/hook/useApi";
@@ -168,16 +169,36 @@ function FechaCard({ f, evento, esTesorero, onRefresh, onToast }) {
         {/* Chips de padres */}
         {(f.padres ?? []).length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {f.padres.map((ep) => (
-              <PadreChip
-                key={ep.id}
-                ep={ep}
-                evento={evento}
-                esTesorero={esTesorero}
-                onRefresh={onRefresh}
-                onToast={onToast}
-              />
-            ))}
+            {evento.tiene_turnos === 1
+              ? // Con turnos: agrupar por padre_id → un chip por padre con modal
+                Object.values(
+                  (f.padres ?? []).reduce((acc, ep) => {
+                    if (!acc[ep.padre_id]) acc[ep.padre_id] = [];
+                    acc[ep.padre_id].push(ep);
+                    return acc;
+                  }, {})
+                ).map((eps) => (
+                  <PadreChipWrapper
+                    key={eps[0].padre_id}
+                    eps={eps}
+                    evento={evento}
+                    esTesorero={esTesorero}
+                    onRefresh={onRefresh}
+                    onToast={onToast}
+                  />
+                ))
+              : // Sin turnos: chip individual por registro
+                (f.padres ?? []).map((ep) => (
+                  <PadreChipWrapper
+                    key={ep.id}
+                    eps={ep}
+                    evento={evento}
+                    esTesorero={esTesorero}
+                    onRefresh={onRefresh}
+                    onToast={onToast}
+                  />
+                ))
+            }
           </div>
         ) : (
           <p className="text-[10px] text-stone-300 italic">Sin padres asignados</p>
@@ -188,10 +209,292 @@ function FechaCard({ f, evento, esTesorero, onRefresh, onToast }) {
 }
 
 // ── Chip de padre con gestión ─────────────────────────────────────────────────
+// Con turnos: agrupa ambos registros en un solo chip que abre ModalTurnos
+// Sin turnos: comportamiento original
+function PadreChipWrapper({ eps, evento, esTesorero, onRefresh, onToast }) {
+  // eps puede ser un array (con turnos) o un solo objeto (sin turnos)
+  const hasTurnos = evento.tiene_turnos === 1 && Array.isArray(eps);
+
+  if (hasTurnos) {
+    return (
+      <PadreChipConTurnos
+        eps={eps}
+        evento={evento}
+        esTesorero={esTesorero}
+        onRefresh={onRefresh}
+        onToast={onToast}
+      />
+    );
+  }
+
+  return (
+    <PadreChip
+      ep={Array.isArray(eps) ? eps[0] : eps}
+      evento={evento}
+      esTesorero={esTesorero}
+      onRefresh={onRefresh}
+      onToast={onToast}
+    />
+  );
+}
+
+// Chip agrupado para eventos con 2 turnos
+function PadreChipConTurnos({ eps, evento, esTesorero, onRefresh, onToast }) {
+  const [modalOpen, setModalOpen] = useState(false);
+
+  const epEntrada = eps.find((e) => Number(e.turno) === 1);
+  const epSalida  = eps.find((e) => Number(e.turno) === 2);
+
+  const estadoEntrada  = Number(epEntrada?.estado ?? 0);
+  const estadoSalida   = Number(epSalida?.estado  ?? 0);
+  const ambosPresentes = estadoEntrada === 1 && estadoSalida === 1;
+  const algunPresente  = estadoEntrada === 1 || estadoSalida === 1;
+
+  const padre = eps[0]?.padre;
+
+  const chipBg = ambosPresentes
+    ? "bg-emerald-50 border-emerald-200"
+    : algunPresente
+      ? "bg-amber-50 border-amber-200"
+      : "bg-stone-50 border-stone-200";
+
+  return (
+    <>
+      <button
+        onClick={() => esTesorero && setModalOpen(true)}
+        className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 border transition-all cursor-pointer hover:opacity-80 ${chipBg}`}
+      >
+        <div className="w-5 h-5 rounded-full bg-white/80 flex items-center justify-center shrink-0 shadow-sm">
+          <span className="text-[8px] font-black text-stone-600">
+            {padre?.nombre?.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "?"}
+          </span>
+        </div>
+        <span className="text-[11px] font-semibold text-stone-700 leading-none">
+          {padre?.nombre?.split(" ").slice(0, 2).join(" ")}
+        </span>
+        {/* Indicadores E / S */}
+        <div className="flex gap-0.5 ml-0.5">
+          <span className={`text-[9px] font-black px-1 py-0.5 rounded
+            ${estadoEntrada === 1 ? "bg-emerald-400 text-white" : "bg-stone-200 text-stone-400"}`}>
+            E
+          </span>
+          <span className={`text-[9px] font-black px-1 py-0.5 rounded
+            ${estadoSalida === 1 ? "bg-emerald-400 text-white" : "bg-stone-200 text-stone-400"}`}>
+            S
+          </span>
+        </div>
+      </button>
+
+      {modalOpen && (
+        <ModalTurnos
+          eps={eps}
+          evento={evento}
+          onClose={() => setModalOpen(false)}
+          onRefresh={() => { onRefresh(); setModalOpen(false); }}
+          onToast={onToast}
+        />
+      )}
+    </>
+  );
+}
+
+// Modal para marcar turnos individualmente
+function ModalTurnos({ eps, evento, onClose, onRefresh, onToast }) {
+  const [loading,   setLoading]   = useState(null); // turno en proceso
+  const [modalEx,   setModalEx]   = useState(false);
+  const api = useApi();
+
+  const padre    = eps[0]?.padre;
+  const epRef    = eps[0]; // referencia para exonerar/quitar (cualquier turno sirve)
+  const fechaStr = epRef?.fecha
+    ? String(epRef.fecha).slice(0, 10)
+    : null;
+
+  const epEntrada = eps.find((e) => Number(e.turno) === 1);
+  const epSalida  = eps.find((e) => Number(e.turno) === 2);
+
+  const marcar = async (ep) => {
+    if (Number(ep.estado) === 1) return;
+    setLoading(Number(ep.turno));
+    try {
+      await api.post(`/eventos/${evento.id}/asistencia`, {
+        padre_id: ep.padre_id,
+        fecha:    fechaStr,
+        turno:    Number(ep.turno),
+      });
+      onToast("Asistencia registrada");
+      onRefresh();
+    } catch (e) {
+      onToast(e.message ?? "Error al registrar asistencia", "err");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const turnosData = [
+    { label: "Entrada", ep: epEntrada },
+    { label: "Salida",  ep: epSalida  },
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4">
+      <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 flex flex-col gap-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+              <span className="text-xs font-black text-amber-700">
+                {padre?.nombre?.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "?"}
+              </span>
+            </div>
+            <div>
+              <p className="text-sm font-black text-stone-800">{padre?.nombre ?? "—"}</p>
+              <p className="text-[10px] text-stone-400">
+                {evento.titulo} · {fechaStr ? formatFecha(fechaStr) : "—"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 flex items-center justify-center"
+          >
+            <X size={14} className="text-stone-500" />
+          </button>
+        </div>
+
+        {/* Turnos */}
+        <div className="flex flex-col gap-2">
+          {turnosData.map(({ label, ep }) => {
+            if (!ep) return (
+              <div key={label} className="flex items-center gap-3 px-4 py-3 rounded-xl border-2 bg-stone-50 border-stone-100 opacity-40">
+                <Clock size={14} className="text-stone-300" />
+                <p className="text-sm text-stone-400">Turno {label} — sin asignar</p>
+              </div>
+            );
+            const presente = Number(ep.estado) === 1;
+            const monto    = ep.monto_asignado ?? 0;
+
+            return (
+              <div
+                key={Number(ep.turno)}
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all
+                  ${presente ? "bg-emerald-50 border-emerald-200" : "bg-stone-50 border-stone-200"}`}
+              >
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                  ${presente ? "bg-emerald-100" : "bg-stone-100"}`}>
+                  {presente
+                    ? <Check size={14} className="text-emerald-600" strokeWidth={3} />
+                    : <Clock size={14} className="text-stone-400" />
+                  }
+                </div>
+                <div className="flex-1">
+                  <p className={`text-sm font-bold ${presente ? "text-emerald-700" : "text-stone-600"}`}>
+                    Turno {label}
+                  </p>
+                  <p className="text-[10px] text-stone-400">
+                    {presente ? "Asistió" : `Pendiente · multa S/ ${Number(monto).toFixed(2)}`}
+                  </p>
+                </div>
+                {!presente && evento.estado === EVENTO_ESTADO.ACTIVO && (
+                  <button
+                    onClick={() => marcar(ep)}
+                    disabled={loading === Number(ep.turno)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600
+                      text-white text-xs font-bold rounded-lg transition-colors disabled:opacity-60"
+                  >
+                    {loading === Number(ep.turno)
+                      ? <Loader2 size={12} className="animate-spin" />
+                      : <><Check size={12} strokeWidth={3} /> Marcar</>
+                    }
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Acciones — exonerar / quitar */}
+        {evento.estado === EVENTO_ESTADO.ACTIVO && (
+          <div className="flex gap-2 pt-1 border-t border-stone-100">
+            <button
+              onClick={() => setModalEx(true)}
+              className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl
+                bg-purple-50 hover:bg-purple-100 border border-purple-100 text-xs font-bold text-purple-500 transition-colors"
+            >
+              <ShieldOff size={12} /> Exonerar
+            </button>
+            <BotonQuitarPadre
+              ep={epRef}
+              evento={evento}
+              onDone={() => { onClose(); onRefresh(); onToast("Asignación eliminada"); }}
+              onError={onToast}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Modal exonerar (reutiliza el existente) */}
+      {modalEx && (
+        <ModalExonerar
+          ep={{ ...epRef, fecha: fechaStr }}
+          evento={evento}
+          onClose={() => setModalEx(false)}
+          onDone={() => { setModalEx(false); onClose(); onRefresh(); onToast("Padre exonerado"); }}
+          onError={onToast}
+        />
+      )}
+    </div>
+  );
+}
+
+// Botón quitar padre inline (para usar dentro de ModalTurnos)
+function BotonQuitarPadre({ ep, evento, onDone, onError }) {
+  const [modalOpen, setModalOpen] = useState(false);
+  return (
+    <>
+      <button
+        onClick={() => setModalOpen(true)}
+        className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl
+          bg-red-50 hover:bg-red-100 border border-red-100 text-xs font-bold text-red-400 transition-colors"
+      >
+        <UserMinus size={12} /> Quitar
+      </button>
+      {modalOpen && (
+        <ModalQuitarPadre
+          ep={ep}
+          evento={evento}
+          onClose={() => setModalOpen(false)}
+          onDone={onDone}
+          onError={onError}
+        />
+      )}
+    </>
+  );
+}
+
 function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [marcando,  setMarcando]  = useState(false);
   const cfg  = ESTADO_CONFIG[ep.estado] ?? ESTADO_CONFIG[0];
   const Icon = cfg.icon;
+  const api  = useApi();
+
+  const marcarAsistencia = async (e) => {
+    e.stopPropagation();
+    setMarcando(true);
+    try {
+      await api.post(`/eventos/${evento.id}/asistencia`, {
+        padre_id: ep.padre_id,
+        fecha:    ep.fecha,
+      });
+      onToast("Asistencia registrada");
+      onRefresh();
+    } catch (err) {
+      onToast(err.message ?? "Error al registrar asistencia", "err");
+    } finally {
+      setMarcando(false);
+    }
+  };
 
   return (
     <>
@@ -201,12 +504,36 @@ function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
             {ep.padre?.nombre?.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "?"}
           </span>
         </div>
-        <span className="text-[11px] font-semibold text-stone-700 leading-none">
-          {ep.padre?.nombre?.split(" ").slice(0, 2).join(" ")}
-        </span>
+        <div className="flex flex-col leading-none">
+          <span className="text-[11px] font-semibold text-stone-700">
+            {ep.padre?.nombre?.split(" ").slice(0, 2).join(" ")}
+          </span>
+          {ep.turno && (
+            <span className="text-[9px] text-stone-400 font-medium">
+              {ep.turno === 1 ? "Entrada" : "Salida"}
+            </span>
+          )}
+        </div>
         <Icon size={11} className={cfg.color} strokeWidth={2.5} title={cfg.label} />
 
-        {/* Solo tesorero, solo pendientes y activo */}
+        {/* Marcar asistencia — solo pendientes */}
+        {esTesorero && evento.estado === EVENTO_ESTADO.ACTIVO && ep.estado === 0 && (
+          <button
+            onClick={marcarAsistencia}
+            disabled={marcando}
+            title="Marcar asistencia"
+            className="w-4 h-4 rounded-full bg-white/60 hover:bg-emerald-50 border border-stone-200
+              hover:border-emerald-200 flex items-center justify-center transition-all
+              opacity-0 group-hover:opacity-100 ml-0.5"
+          >
+            {marcando
+              ? <Loader2 size={8} className="text-emerald-400 animate-spin" strokeWidth={3} />
+              : <Check size={8} className="text-emerald-500" strokeWidth={3} />
+            }
+          </button>
+        )}
+
+        {/* Quitar/gestionar — solo pendientes */}
         {esTesorero && evento.estado === EVENTO_ESTADO.ACTIVO && ep.estado === 0 && (
           <button
             onClick={(e) => { e.stopPropagation(); setModalOpen(true); }}
@@ -235,10 +562,27 @@ function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
 
 // ── Vista plana: faena, reunión, actividad ────────────────────────────────────
 function TabPadresPlano({ evento, onToast, esTesorero }) {
-  const [padres,  setPadres]  = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modalEx, setModalEx] = useState(null);
+  const [padres,     setPadres]     = useState([]);
+  const [loading,    setLoading]    = useState(true);
+  const [modalEx,    setModalEx]    = useState(null);
+  const [marcando,   setMarcando]   = useState(null); // padre_id en proceso
   const api = useApi();
+
+  const marcarAsistencia = async (ep) => {
+    setMarcando(ep.padre_id);
+    try {
+      await api.post(`/eventos/${evento.id}/asistencia`, {
+        padre_id: ep.padre_id,
+        fecha:    ep.fecha ?? undefined,
+      });
+      onToast("Asistencia registrada");
+      cargar();
+    } catch (e) {
+      onToast(e.message ?? "Error al registrar asistencia", "err");
+    } finally {
+      setMarcando(null);
+    }
+  };
 
   const cargar = () => {
     setLoading(true);
@@ -303,6 +647,22 @@ function TabPadresPlano({ evento, onToast, esTesorero }) {
                   <Icon size={9} strokeWidth={2.5} />
                   {cfg.label}
                 </span>
+
+                {/* Botón marcar asistencia — solo pendientes */}
+                {esTesorero && evento.estado === EVENTO_ESTADO.ACTIVO && ep.estado === 0 && (
+                  <button
+                    onClick={() => marcarAsistencia(ep)}
+                    disabled={marcando === ep.padre_id}
+                    title="Marcar asistencia"
+                    className="w-7 h-7 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100
+                      flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    {marcando === ep.padre_id
+                      ? <Loader2 size={12} className="text-emerald-400 animate-spin" />
+                      : <UserCheck size={12} className="text-emerald-500" />
+                    }
+                  </button>
+                )}
 
                 {/* Botón exonerar — solo tesorero, activo, pendiente o presente */}
                 {esTesorero && evento.estado === EVENTO_ESTADO.ACTIVO && [0, 1].includes(ep.estado) && (

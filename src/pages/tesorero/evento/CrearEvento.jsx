@@ -51,6 +51,7 @@ export default function CrearEvento({ onBack, onCreated }) {
     hora_inicio: "07:00",
     hora_fin: "18:00",
     tiene_multa: false,
+    tiene_turnos: 0,
     multa_monto: "10",
     padres_por_dia: "4",
     dias_semana: [1, 2, 3, 4, 5],
@@ -134,6 +135,7 @@ export default function CrearEvento({ onBack, onCreated }) {
       hora_inicio: isCobro ? null : (form.hora_inicio || null),
       hora_fin: isCobro ? null : (form.hora_fin || null),
       tiene_multa: isCobro ? false : form.tiene_multa,
+      tiene_turnos: isGuardia ? form.tiene_turnos : 0,
       multa_monto: isActividad ? (Number(form.multa_monto) || 0) : Number(form.multa_monto),
       padres_por_dia: isGuardia ? Number(form.padres_por_dia) : null,
       dias_semana: isGuardia ? form.dias_semana : null,
@@ -363,6 +365,29 @@ function Paso1({ form, set, isGuardia, isCobro, isActividad, setForm }) {
             onChange={set("padres_por_dia")}
             placeholder="Ej: 4"
           />
+
+          {/* Toggle 2 turnos */}
+          <div className="flex items-center gap-3 bg-stone-50 rounded-xl px-3 py-2.5">
+            <input
+              type="checkbox"
+              id="tiene_turnos"
+              checked={form.tiene_turnos === 1}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, tiene_turnos: e.target.checked ? 1 : 0 }))
+              }
+              className="w-4 h-4 accent-amber-500"
+            />
+            <div className="flex-1">
+              <label htmlFor="tiene_turnos" className="text-xs font-semibold text-stone-600 cursor-pointer block">
+                Tiene 2 turnos (entrada y salida)
+              </label>
+              {form.tiene_turnos === 1 && (
+                <p className="text-[11px] text-stone-400 mt-0.5">
+                  Cada turno vale la mitad de la multa. Falta a uno → S/ {(Number(form.multa_monto) / 2).toFixed(2)} · Falta a ambos → S/ {Number(form.multa_monto).toFixed(2)}
+                </p>
+              )}
+            </div>
+          </div>
         </>
       )}
 
@@ -476,6 +501,9 @@ function PasoRevision({ form, tipo }) {
         )}
         {tipo === "0" && (
           <Row label="Padres por día" value={form.padres_por_dia} />
+        )}
+        {tipo === "0" && form.tiene_turnos === 1 && (
+          <Row label="Turnos" value="2 turnos (entrada y salida)" />
         )}
       </div>
 

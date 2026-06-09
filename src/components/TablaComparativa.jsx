@@ -1,26 +1,27 @@
 import React from "react";
 
 const data = [
-  { id: 1, nombre: "EDHER", dio: true, detalle: "Edher Barreto", monto: 1.47 },
-  { id: 2, nombre: "JUHAN", dio: true, detalle: "Juhan Bazán Agreda", monto: 1.50 },
-  { id: 3, nombre: "GADDIEL", dio: true, detalle: "Gaddiel Caballero", monto: 1.50 },
-  { id: 4, nombre: "LIAM", dio: true, detalle: "Calderón Liam", monto: 1.50 },
-  { id: 5, nombre: "EXUM", dio: true, detalle: "Exum Nuran Carhuapoma Guevara", monto: 1.50 },
-  { id: 6, nombre: "RODRIGO", dio: true, detalle: "Rodrigo Cuchuyrumi", monto: 1.50 },
-  { id: 7, nombre: "LUCIANO", dio: true, detalle: "Abdiel Luciano González Franco", monto: 1.47 },
-  { id: 8, nombre: "EVANS", dio: true, detalle: "Evans Pacheco", monto: 1.50 },
-  { id: 9, nombre: "ARLET", dio: false, detalle: "", monto: 0 },
-  { id: 10, nombre: "IVANA", dio: true, detalle: "Ivana Huaycochea", monto: 1.50 },
-  { id: 11, nombre: "JERENIS", dio: true, detalle: "Jerenis Lucero Mamani", monto: 1.50 },
-  { id: 12, nombre: "VICTORIA", dio: true, detalle: "Victoria Kathalina", monto: 1.50 },
-  { id: 13, nombre: "MATEO", dio: true, detalle: "Mateo Melgarejo", monto: 1.50 },
-  { id: 14, nombre: "AIRAM", dio: true, detalle: "Airam Monsalve", monto: 1.50 },
-  { id: 15, nombre: "FABIO", dio: false, detalle: "", monto: 0 },
-  { id: 16, nombre: "BENJAMIN", dio: true, detalle: "Benjamín Pupuche", monto: 1.50 },
-  { id: 17, nombre: "LUKAS", dio: true, detalle: "Lukas Rodriguez", monto: 1.50 },
-  { id: 18, nombre: "ABRIL", dio: true, detalle: "Abril Yauri Quezada", monto: 1.50 },
-  { id: 19, nombre: "VALENTINO", dio: true, detalle: "Valentino Yzaguirre Murillo", monto: 1.50 },
-  { id: 20, nombre: "ISAAC", dio: true, detalle: "Isaac Rodriguez", monto: 1.50 },
+  { id: 1, nombre: "EDHER", dio: true, detalle: "Edher fabrizio Barreto Franco", monto: 2.70 },
+  { id: 2, nombre: "JUHAN", dio: true, detalle: "Juhan Bazán Agreda", monto: 2.70 },
+  { id: 3, nombre: "GADDIEL", dio: true, detalle: "Gaddiel Caballero", monto: 2.70 },
+  { id: 4, nombre: "LIAM", dio: true, detalle: "Calderón Liam", monto: 2.70 },
+  { id: 5, nombre: "EXUM", dio: true, detalle: "Exum Nuran Carhuapoma Guevara", monto: 2.70 },
+  { id: 6, nombre: "RODRIGO", dio: false, detalle: "Rodrigo Cuchuyrumi", monto: 2.70 },
+  { id: 7, nombre: "LUCIANO", dio: true, detalle: "Abdiel Luciano González Franco", monto: 2.70 },
+  { id: 8, nombre: "EVANS", dio: true, detalle: "Evans Pacheco", monto: 2.70 },
+  { id: 9, nombre: "ARLET", dio: true, detalle: "Arlet Naomi Tirado Martinez", monto: 2.70 },
+  // { id: 10, nombre: "IVANA", dio: false, detalle: "Ivana Huaycochea", monto: 2.70 },
+  { id: 10, nombre: "JERENIS", dio: true, detalle: "Jerenis Lucero Mamani", monto: 2.70 },
+  { id: 11, nombre: "VICTORIA", dio: false, detalle: "Victoria Kathalina", monto: 2.70 },
+  { id: 12, nombre: "MATEO", dio: true, detalle: "Mateo Melgarejo", monto: 2.70 },
+  { id: 13, nombre: "AIRAM", dio: true, detalle: "Airam Monsalve", monto: 2.70 },
+  { id: 14, nombre: "FABIO", dio: true, detalle: "Fabio Emir Portocarrero Cabrera", monto: 2.70 },
+  { id: 15, nombre: "BENJAMIN", dio: true, detalle: "Benjamín Pupuche", monto: 2.70 },
+  { id: 16, nombre: "LUKAS", dio: true, detalle: "Lukas Rodriguez", monto: 2.70 },
+  { id: 17, nombre: "ABRIL", dio: false, detalle: "Abril Yauri Quezada", monto: 2.70 },
+  { id: 18, nombre: "VALENTINO", dio: true, detalle: "Valentino Yzaguirre Murillo", monto: 2.70 },
+  { id: 19, nombre: "ISAAC", dio: true, detalle: "Isaac Rodriguez", monto: 2.70 },
+  { id: 20, nombre: "AARON", dio: false, detalle: "Styl Aaron Nicolas Taipe Marquez", monto: 2.70 },
 ];
 
 export default function TablaComparativa() {
@@ -30,9 +31,9 @@ export default function TablaComparativa() {
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
       <div className="max-w-6xl mx-auto bg-white shadow-xl rounded-2xl p-6">
-        
+
         <h1 className="text-2xl font-bold text-gray-800 mb-4">
-          📊 Control de Entregas
+          📊 Control de Entregas - Portaretrato
         </h1>
 
         <table className="w-full border-collapse">

@@ -6,7 +6,8 @@ export const useAbono = () => {
     const [loading, setLoading] = useState(false);
     const [loadingPend, setLoadingPend] = useState(false);
     const [error, setError] = useState(null);
-    const [abonos, setAbonos] = useState([]);  // ← agregado
+    const [abonos, setAbonos] = useState([]);
+    const [totalesPorPadre, setTotalesPorPadre] = useState({});
     const [pendientes, setPendientes] = useState([]);
 
     const api = useApi();
@@ -38,13 +39,18 @@ export const useAbono = () => {
             if (fecha_fin !== null) params.fecha_fin = fecha_fin;
 
             const response = await api.get("/abonos", { params });
-            setAbonos(response ?? []);
-            return response ?? [];
+            // El backend devuelve { abonos, totales_por_padre }
+            const lista   = response?.abonos ?? response ?? [];
+            const totales = response?.totales_por_padre ?? {};
+            setAbonos(lista);
+            setTotalesPorPadre(totales);
+            return { abonos: lista, totales };
 
         } catch (err) {
             console.error("❌ Error en getAbonos:", err);
             setError(err.message);
             setAbonos([]);
+            setTotalesPorPadre({});
             throw err;
         } finally {
             setLoading(false);
@@ -177,9 +183,10 @@ export const useAbono = () => {
         loading,
         loadingPend,
         error,
-        abonos,         // ← agregado
+        abonos,
+        totalesPorPadre,
         pendientes,
-        getAbonos,      // ← agregado
+        getAbonos,
         getPendientes,
         registrarAbono,
         anularAbono,

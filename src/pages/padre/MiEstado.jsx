@@ -102,7 +102,7 @@ export default function MiEstado() {
   const montoCObrosFuturos = cobrosPendientes
     .filter(esFuturo)
     .reduce(
-      (s, ep) => s + Number(ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
+      (s, ep) => s + Number(ep.monto_asignado ?? ep.evento?.multa_monto ?? 0) - Number(ep.monto_pagado ?? 0), 0
     );
   const saldoVisible = Math.max(0, saldo - montoCObrosFuturos);
 

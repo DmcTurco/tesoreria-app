@@ -74,6 +74,36 @@ export default function AdminDB() {
           confirmar={false}
         />
 
+        {/* ── Fix cobros pagados con estado pendiente ── */}
+        <AccionCard
+          icon={<CheckCircle size={20} className="text-emerald-600" />}
+          iconBg="bg-emerald-100"
+          titulo="Corregir cobros pagados como pendientes"
+          descripcion="Marca como presentes los cobros donde el padre ya pagó el monto completo pero el estado quedó en pendiente (ocurre cuando el precio del evento fue modificado)."
+          etiqueta="Corrección"
+          etiquetaColor="bg-emerald-50 text-emerald-600"
+          botonLabel="Ejecutar corrección"
+          botonColor="bg-emerald-500 hover:bg-emerald-600"
+          endpoint="/admin/fix-cobros-estado"
+          api={api}
+          confirmar={false}
+        />
+
+        {/* ── Sincronizar monto_pagado con abonos activos ── */}
+        <AccionCard
+          icon={<RefreshCw size={20} className="text-blue-600" />}
+          iconBg="bg-blue-100"
+          titulo="Sincronizar montos pagados"
+          descripcion="Recalcula monto_pagado de cada cobro desde los abonos activos. Corrige discrepancias causadas por abonos anulados o cambios de precio que no actualizaron el balance correctamente."
+          etiqueta="Corrección"
+          etiquetaColor="bg-blue-50 text-blue-600"
+          botonLabel="Sincronizar"
+          botonColor="bg-blue-500 hover:bg-blue-600"
+          endpoint="/admin/fix-monto-pagado-cobros"
+          api={api}
+          confirmar={false}
+        />
+
         {/* ── Backup ── */}
         <BackupCard />
 

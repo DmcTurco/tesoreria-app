@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   AlertTriangle, CheckCircle, CreditCard,
-  CalendarDays, Loader2, AlertCircle, Wallet,
+  CalendarDays, Loader2, AlertCircle, Wallet, ShieldAlert,
 } from "lucide-react";
 import useApi from "../../hook/useApi";
 import {
@@ -61,12 +61,13 @@ export default function MiEstado() {
     </div>
   );
 
-  const padre  = data?.padre;
-  const saldo  = Number(data?.saldo_deuda ?? 0);
-  const multas = data?.multas  ?? [];
-  const abonos = data?.abonos  ?? [];
-  const eventos = data?.eventos ?? [];
-  const cobros  = data?.cobros  ?? [];
+  const padre       = data?.padre;
+  const saldo       = Number(data?.saldo_deuda ?? 0);
+  const multas      = data?.multas       ?? [];
+  const abonos      = data?.abonos       ?? [];
+  const eventos     = data?.eventos      ?? [];
+  const cobros      = data?.cobros       ?? [];
+  const asignaciones = data?.asignaciones ?? [];
 
   const multasPendientes = multas.filter(
     (m) => Number(m.estado) === MULTA_ESTADO.PENDIENTE || Number(m.estado) === 1
@@ -208,6 +209,49 @@ export default function MiEstado() {
               badge={futuro ? "Próximo" : "Pendiente"}
               badgeColor={futuro ? "bg-stone-100 text-stone-400" : "bg-orange-50 text-orange-600"}
             />
+            );
+          })}
+        </SeccionCard>
+      )}
+
+      {/* Asignaciones pendientes (bapers, faenas, reuniones) */}
+      {asignaciones.length > 0 && (
+        <SeccionCard
+          titulo="Mis asignaciones"
+          badge={asignaciones.length}
+          badgeColor="bg-blue-50 text-blue-600"
+          icon={<ShieldAlert size={15} className="text-blue-400" />}
+        >
+          {asignaciones.map((ep) => {
+            const multa = Number(ep.monto_asignado ?? ep.evento?.multa_monto ?? 0);
+            const tipo  = ep.evento?.tipo;
+            const tipoLabel = tipo === 0 ? "Bapers" : tipo === 1 ? "Faena" : tipo === 2 ? "Reunión" : "Actividad";
+            return (
+              <div key={ep.id} className="py-3 border-b border-stone-50 last:border-0 flex flex-col gap-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-stone-700 truncate">{ep.evento?.titulo ?? "—"}</p>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      {ep.fecha
+                        ? `Día asignado: ${formatFecha(ep.fecha)}`
+                        : ep.evento?.fecha_inicio
+                        ? `Desde: ${formatFecha(ep.evento.fecha_inicio)}`
+                        : "Sin fecha"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 shrink-0">
+                    {tipoLabel}
+                  </span>
+                </div>
+                {multa > 0 && (
+                  <div className="flex items-start gap-1.5 bg-amber-50 rounded-lg px-3 py-2">
+                    <AlertTriangle size={11} className="text-amber-500 shrink-0 mt-0.5" />
+                    <p className="text-[11px] text-amber-700 leading-relaxed">
+                      Si no asistes, se generará una multa de <span className="font-bold">S/ {multa.toFixed(2)}</span> al cerrar el evento.
+                    </p>
+                  </div>
+                )}
+              </div>
             );
           })}
         </SeccionCard>

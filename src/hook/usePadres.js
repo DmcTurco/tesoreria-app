@@ -104,6 +104,21 @@ export const usePadres = () => {
     }, [api]);
 
     /**
+     * Marcar un padre como retirado (anula deudas y lo excluye de nuevos eventos)
+     * @param {number} id
+     */
+    const retirarPadre = useCallback(async (id) => {
+        try {
+            if (!id) throw new Error("id es requerido");
+            const response = await api.put(`/padres/${id}/retirar`);
+            return response;
+        } catch (err) {
+            console.error("❌ Error en retirarPadre:", err);
+            throw err;
+        }
+    }, [api]);
+
+    /**
      * Eliminar un padre y su usuario asociado
      * @param {number} id
      */
@@ -135,5 +150,6 @@ export const usePadres = () => {
         resetPassword,
         getQR,
         deletePadre,
+        retirarPadre,
     };
 };

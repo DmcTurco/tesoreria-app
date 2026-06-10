@@ -7,6 +7,7 @@ import {
   Loader2,
   KeyRound,
   Trash2,
+  UserX,
 } from "lucide-react";
 import { usePadres } from "../../hook/usePadres";
 import useApi from "../../hook/useApi";
@@ -26,6 +27,7 @@ export default function Padres() {
     resetPassword,
     getQR,
     deletePadre,
+    retirarPadre,
   } = usePadres();
 
   useEffect(() => {
@@ -97,9 +99,16 @@ export default function Padres() {
                   </span>
                 </div>
                 <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className="text-sm font-bold text-stone-700 line-clamp-2 wrap-break-word">
-                    {p.nombre}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-bold text-stone-700 line-clamp-1 wrap-break-word">
+                      {p.nombre}
+                    </p>
+                    {p.retirado && (
+                      <span className="shrink-0 text-[10px] font-bold bg-stone-200 text-stone-500 px-1.5 py-0.5 rounded-full">
+                        Retirado
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-stone-400 wrap-break-word">
                     {p.codigo} · {p.hijo} · {p.grado}
                   </p>
@@ -129,6 +138,7 @@ export default function Padres() {
           resetPassword={resetPassword}
           getQR={getQR}
           deletePadre={deletePadre}
+          retirarPadre={retirarPadre}
           onClose={() => setModal(null)}
           onUpdated={() => {
             showToast("Actualizado");
@@ -137,6 +147,11 @@ export default function Padres() {
           onDeleted={() => {
             setModal(null);
             showToast("Eliminado");
+            getPadres();
+          }}
+          onRetirado={() => {
+            setModal(null);
+            showToast("Padre marcado como retirado");
             getPadres();
           }}
           onError={(msg) => showToast(msg, "err")}
@@ -223,14 +238,17 @@ function ModalDetallePadre({
   resetPassword,
   getQR,
   deletePadre,
+  retirarPadre,
   onClose,
   onUpdated,
   onDeleted,
+  onRetirado,
   onError,
 }) {
   const [tab, setTab] = useState("info");
   const [newPass, setNewPass] = useState("");
   const [loading, setLoading] = useState(false);
+  const [loadingRetirar, setLoadingRetirar] = useState(false);
   const [qrData, setQrData] = useState(null);
 
   const handleResetPass = async () => {
@@ -260,6 +278,20 @@ function ModalDetallePadre({
     }
   };
 
+  const handleRetirar = async () => {
+    if (!confirm(`¿Marcar a ${padre.nombre} como retirado? Se anularán sus deudas pendientes.`))
+      return;
+    setLoadingRetirar(true);
+    try {
+      await retirarPadre(padre.id);
+      onRetirado();
+    } catch (e) {
+      onError(e.message ?? "Error al retirar");
+    } finally {
+      setLoadingRetirar(false);
+    }
+  };
+
   const loadQR = async () => {
     if (qrData) return;
     try {
@@ -279,6 +311,11 @@ function ModalDetallePadre({
         <span className="text-xs text-stone-400">
           {padre.grado} · {padre.hijo}
         </span>
+        {padre.retirado && (
+          <span className="text-xs font-bold bg-stone-200 text-stone-500 px-2 py-0.5 rounded-full">
+            Retirado
+          </span>
+        )}
       </div>
 
       {/* Sub-tabs */}
@@ -310,12 +347,9 @@ function ModalDetallePadre({
           <Row label="Grado" value={padre.grado} />
           <Row label="Teléfono" value={padre.telefono || "—"} />
           <Row label="Usuario" value={padre.codigo} />
-          <button
-            onClick={handleDelete}
-            className="mt-3 flex items-center gap-2 text-red-400 hover:text-red-500 text-xs font-semibold transition-colors"
-          >
-            <Trash2 size={13} /> Eliminar padre
-          </button>
+          {padre.retirado && padre.fecha_retiro && (
+            <Row label="Fecha retiro" value={padre.fecha_retiro} />
+          )}
         </div>
       )}
 
@@ -360,6 +394,26 @@ function ModalDetallePadre({
           )}
         </div>
       )}
+
+      {/* Footer de acciones */}
+      <div className="flex gap-2 pt-2 border-t border-stone-100 -mx-5 px-5">
+        {!padre.retirado && (
+          <button
+            onClick={handleRetirar}
+            disabled={loadingRetirar}
+            className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-orange-50 hover:bg-orange-100 text-orange-600 text-xs font-bold rounded-xl transition-colors disabled:opacity-60"
+          >
+            {loadingRetirar ? <Loader2 size={13} className="animate-spin" /> : <UserX size={13} />}
+            Retirar
+          </button>
+        )}
+        <button
+          onClick={handleDelete}
+          className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-red-50 hover:bg-red-100 text-red-500 text-xs font-bold rounded-xl transition-colors"
+        >
+          <Trash2 size={13} /> Eliminar
+        </button>
+      </div>
     </Modal>
   );
 }

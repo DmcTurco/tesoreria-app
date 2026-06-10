@@ -25,6 +25,7 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
         hora_fin:     evento.hora_fin     ? evento.hora_fin.slice(0, 5)     : "",
     });
     const [loading, setLoading] = useState(false);
+    const [loadingMultas, setLoadingMultas] = useState(false);
     const api = useApi();
     const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
 
@@ -134,6 +135,26 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                     <>
                         <Row label="Tipo"         value={EVENTO_TIPO_LABEL[evento.tipo]} />
                         <Row label="Estado"       value={evento.estado === EVENTO_ESTADO.ACTIVO ? "Activo" : "Cerrado"} />
+                        {/* Botón regenerar multas — solo para eventos cerrados con multa activa */}
+                        {esTesorero && evento.estado === EVENTO_ESTADO.CERRADO && evento.tiene_multa && (
+                            <button
+                                onClick={async () => {
+                                    setLoadingMultas(true);
+                                    try {
+                                        const res = await api.post(`/eventos/${evento.id}/regenerar-multas`);
+                                        onToast(`Multas regeneradas: ${res.creadas} nueva(s)`);
+                                    } catch {
+                                        onToast("Error al regenerar multas", "err");
+                                    } finally {
+                                        setLoadingMultas(false);
+                                    }
+                                }}
+                                disabled={loadingMultas}
+                                className="w-full h-10 bg-orange-50 hover:bg-orange-100 border border-orange-200 text-orange-700 text-xs font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+                            >
+                                {loadingMultas ? <Loader2 size={14} className="animate-spin" /> : "⚠️ Regenerar multas"}
+                            </button>
+                        )}
                         <Row label="Descripción"  value={evento.descripcion || "—"} />
                         <Row label="Lugar"        value={evento.lugar || "—"} />
                         <Row label="Fecha inicio" value={formatFecha(evento.fecha_inicio)} />

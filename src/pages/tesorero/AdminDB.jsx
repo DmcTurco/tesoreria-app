@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import {
   Database, RefreshCw, AlertTriangle, CheckCircle,
-  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench, Download, Upload,
+  Loader2, Terminal, ChevronDown, ChevronUp, Trash2, Wrench, Download, Upload, Bell,
 } from "lucide-react";
 import useApi from "../../hook/useApi";
 import { getApiBaseUrl, getHeaders } from "../../services/api";
@@ -100,6 +100,21 @@ export default function AdminDB() {
           botonLabel="Sincronizar"
           botonColor="bg-blue-500 hover:bg-blue-600"
           endpoint="/admin/fix-monto-pagado-cobros"
+          api={api}
+          confirmar={false}
+        />
+
+        {/* ── Enviar recordatorios de guardia/faena ── */}
+        <AccionCard
+          icon={<Bell size={20} className="text-purple-600" />}
+          iconBg="bg-purple-100"
+          titulo="Enviar recordatorios de guardia/faena"
+          descripcion="Envía una notificación push a los padres que tienen guardia o faena asignada para el día siguiente. Se ejecuta automáticamente todos los días a las 20:00, pero puedes lanzarla manualmente aquí."
+          etiqueta="Notificaciones"
+          etiquetaColor="bg-purple-50 text-purple-600"
+          botonLabel="Enviar recordatorios"
+          botonColor="bg-purple-500 hover:bg-purple-600"
+          endpoint="/admin/enviar-recordatorios"
           api={api}
           confirmar={false}
         />

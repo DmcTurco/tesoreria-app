@@ -13,7 +13,7 @@ export default function NuevoAbono() {
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const { pendientes, loadingPend, getPendientes, registrarAbono } = useAbono();
+  const { pendientes, loadingPend, getPendientes, registrarAbonosMultiples } = useAbono();
 
   useEffect(() => {
     if (!padreActivo?.id) {
@@ -75,17 +75,15 @@ export default function NuevoAbono() {
 
     setLoading(true);
     try {
-      await Promise.all(
-        itemsSel.map((item) =>
-          registrarAbono({
-            padre_id: padreActivo.id,
-            tipo_deuda: item.tipo,
-            deuda_id: item.id,
-            monto: Number(item.montoAbono),
-            fecha,
-          }),
-        ),
-      );
+      await registrarAbonosMultiples({
+        padre_id: padreActivo.id,
+        fecha,
+        items: itemsSel.map((item) => ({
+          tipo_deuda: item.tipo,
+          deuda_id: item.id,
+          monto: Number(item.montoAbono),
+        })),
+      });
       navigate("/dashboard/pagos", {
         state: {
           successMsg:

@@ -155,6 +155,33 @@ export const useAbono = () => {
     }, [api]);
 
     /**
+     * Registrar varios abonos de un mismo padre en una sola operación.
+     * El backend envía UNA sola notificación push consolidada.
+     * @param {number} padre_id
+     * @param {string} fecha - YYYY-MM-DD
+     * @param {Array<{tipo_deuda:'multa'|'cobro', deuda_id:number, monto:number}>} items
+     */
+    const registrarAbonosMultiples = useCallback(async ({ padre_id, fecha, items }) => {
+        try {
+            if (!padre_id) throw new Error("padre_id es requerido");
+            if (!fecha) throw new Error("La fecha es requerida");
+            if (!items || items.length === 0) throw new Error("Selecciona al menos una deuda");
+
+            setLoading(true);
+            setError(null);
+
+            return await api.post("/abonos/multiples", { padre_id, fecha, items });
+
+        } catch (err) {
+            console.error("❌ Error en registrarAbonosMultiples:", err);
+            setError(err.message);
+            throw err;
+        } finally {
+            setLoading(false);
+        }
+    }, [api]);
+
+    /**
      * Anular un abono registrado
      * @param {number}  id
      * @param {string}  motivo
@@ -189,6 +216,7 @@ export const useAbono = () => {
         getAbonos,
         getPendientes,
         registrarAbono,
+        registrarAbonosMultiples,
         anularAbono,
     };
 };

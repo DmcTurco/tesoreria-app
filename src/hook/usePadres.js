@@ -11,12 +11,13 @@ export const usePadres = () => {
     /**
      * Obtener todos los padres
      */
-    const getPadres = useCallback(async () => {
+    const getPadres = useCallback(async ({ conRetirados = false } = {}) => {
         try {
             setLoading(true);
             setError(null);
 
-            const response = await api.get("/padres");
+            const url = conRetirados ? "/padres?con_retirados=true" : "/padres";
+            const response = await api.get(url);
             setPadres(response ?? []);
             return response.data;
 
@@ -119,6 +120,21 @@ export const usePadres = () => {
     }, [api]);
 
     /**
+     * Reactivar un padre retirado por error (revierte exoneraciones de retiro)
+     * @param {number} id
+     */
+    const reactivarPadre = useCallback(async (id) => {
+        try {
+            if (!id) throw new Error("id es requerido");
+            const response = await api.put(`/padres/${id}/reactivar`);
+            return response;
+        } catch (err) {
+            console.error("❌ Error en reactivarPadre:", err);
+            throw err;
+        }
+    }, [api]);
+
+    /**
      * Eliminar un padre y su usuario asociado
      * @param {number} id
      */
@@ -151,5 +167,6 @@ export const usePadres = () => {
         getQR,
         deletePadre,
         retirarPadre,
+        reactivarPadre,
     };
 };

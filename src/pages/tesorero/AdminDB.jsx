@@ -119,6 +119,21 @@ export default function AdminDB() {
           confirmar={false}
         />
 
+        {/* ── Enviar recordatorios de deudas pendientes ── */}
+        <AccionCard
+          icon={<Bell size={20} className="text-purple-600" />}
+          iconBg="bg-purple-100"
+          titulo="Enviar recordatorios de deuda"
+          descripcion="Envía una notificación push a los padres con multas o cobros pendientes de pago, indicando el monto total adeudado. Se ejecuta automáticamente los martes y jueves a las 09:00, pero puedes lanzarla manualmente aquí."
+          etiqueta="Notificaciones"
+          etiquetaColor="bg-purple-50 text-purple-600"
+          botonLabel="Enviar recordatorios"
+          botonColor="bg-purple-500 hover:bg-purple-600"
+          endpoint="/admin/enviar-recordatorios-deudas"
+          api={api}
+          confirmar={false}
+        />
+
         {/* ── Backup ── */}
         <BackupCard />
 

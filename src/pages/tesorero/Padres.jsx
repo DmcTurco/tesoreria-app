@@ -8,6 +8,7 @@ import {
   KeyRound,
   Trash2,
   UserX,
+  UserCheck,
 } from "lucide-react";
 import { usePadres } from "../../hook/usePadres";
 import useApi from "../../hook/useApi";
@@ -17,6 +18,7 @@ export default function Padres() {
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null); // "nuevo" | padre_obj
   const [toast, setToast] = useState(null);
+  const [verRetirados, setVerRetirados] = useState(false);
 
   const {
     loading,
@@ -28,11 +30,12 @@ export default function Padres() {
     getQR,
     deletePadre,
     retirarPadre,
+    reactivarPadre,
   } = usePadres();
 
   useEffect(() => {
-    getPadres();
-  }, []);
+    getPadres({ conRetirados: verRetirados });
+  }, [verRetirados]);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -51,12 +54,24 @@ export default function Padres() {
           <h1 className="text-xl font-black text-stone-800">Padres</h1>
           <p className="text-sm text-stone-400">{padres.length} registrados</p>
         </div>
-        <button
-          onClick={() => setModal("nuevo")}
-          className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
-        >
-          <Plus size={16} /> Nuevo padre
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setVerRetirados((v) => !v)}
+            className={`flex items-center gap-1.5 text-xs font-bold px-3 py-2.5 rounded-xl transition-colors border
+              ${verRetirados
+                ? "bg-stone-200 text-stone-600 border-stone-300"
+                : "bg-white text-stone-400 border-stone-200 hover:border-stone-300"}`}
+          >
+            <UserX size={14} />
+            {verRetirados ? "Ocultar retirados" : "Ver retirados"}
+          </button>
+          <button
+            onClick={() => setModal("nuevo")}
+            className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold px-4 py-2.5 rounded-xl transition-colors"
+          >
+            <Plus size={16} /> Nuevo padre
+          </button>
+        </div>
       </div>
 
       {/* Buscador */}
@@ -139,24 +154,113 @@ export default function Padres() {
           getQR={getQR}
           deletePadre={deletePadre}
           retirarPadre={retirarPadre}
+          reactivarPadre={reactivarPadre}
           onClose={() => setModal(null)}
           onUpdated={() => {
             showToast("Actualizado");
-            getPadres();
+            getPadres({ conRetirados: verRetirados });
           }}
           onDeleted={() => {
             setModal(null);
             showToast("Eliminado");
-            getPadres();
+            getPadres({ conRetirados: verRetirados });
           }}
           onRetirado={() => {
             setModal(null);
             showToast("Padre marcado como retirado");
-            getPadres();
+            getPadres({ conRetirados: verRetirados });
+          }}
+          onReactivado={() => {
+            setModal(null);
+            showToast("Padre reactivado correctamente");
+            getPadres({ conRetirados: verRetirados });
           }}
           onError={(msg) => showToast(msg, "err")}
         />
       )}
+    </div>
+  );
+}
+
+// ── Atoms (definidos antes de los modales que los usan) ───────────────────────
+function Row({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-2 py-1.5 border-b border-stone-50">
+      <span className="text-xs font-bold text-stone-400 shrink-0">{label}</span>
+      <span className="text-xs text-stone-700 text-right">{value}</span>
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, type = "text" }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-xs font-bold text-stone-600">{label}</label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm
+          text-stone-700 outline-none focus:border-amber-400 transition-colors"
+      />
+    </div>
+  );
+}
+
+function BtnPrimary({ onClick, loading, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={loading}
+      className="h-10 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold
+        rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60"
+    >
+      {loading ? <Loader2 size={15} className="animate-spin" /> : children}
+    </button>
+  );
+}
+
+function Modal({ titulo, onClose, children }) {
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white z-10">
+          <p className="font-black text-stone-800 text-sm truncate pr-4">{titulo}</p>
+          <button onClick={onClose}>
+            <X size={18} className="text-stone-400 hover:text-stone-600" />
+          </button>
+        </div>
+        <div className="px-5 py-4">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function LoadingRows() {
+  return (
+    <>
+      {[...Array(6)].map((_, i) => (
+        <div key={i} className="flex items-center gap-3 px-4 py-3 animate-pulse">
+          <div className="w-10 h-10 rounded-full bg-stone-100 shrink-0" />
+          <div className="flex-1 flex flex-col gap-1.5">
+            <div className="h-3 bg-stone-100 rounded-full w-2/3" />
+            <div className="h-2.5 bg-stone-50 rounded-full w-1/2" />
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function Toast({ msg, type }) {
+  const isErr = type === "err";
+  return (
+    <div className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2
+      px-4 py-3 rounded-2xl shadow-xl text-sm font-bold text-white
+      ${isErr ? "bg-red-500" : "bg-emerald-500"}`}
+    >
+      {msg}
     </div>
   );
 }
@@ -239,16 +343,19 @@ function ModalDetallePadre({
   getQR,
   deletePadre,
   retirarPadre,
+  reactivarPadre,
   onClose,
   onUpdated,
   onDeleted,
   onRetirado,
+  onReactivado,
   onError,
 }) {
   const [tab, setTab] = useState("info");
   const [newPass, setNewPass] = useState("");
   const [loading, setLoading] = useState(false);
   const [loadingRetirar, setLoadingRetirar] = useState(false);
+  const [loadingReactivar, setLoadingReactivar] = useState(false);
   const [qrData, setQrData] = useState(null);
 
   const handleResetPass = async () => {
@@ -289,6 +396,20 @@ function ModalDetallePadre({
       onError(e.message ?? "Error al retirar");
     } finally {
       setLoadingRetirar(false);
+    }
+  };
+
+  const handleReactivar = async () => {
+    if (!confirm(`¿Reactivar a ${padre.nombre}? Se revertirán todas las exoneraciones por retiro y volverá a tener deudas pendientes.`))
+      return;
+    setLoadingReactivar(true);
+    try {
+      await reactivarPadre(padre.id);
+      onReactivado();
+    } catch (e) {
+      onError(e.message ?? "Error al reactivar");
+    } finally {
+      setLoadingReactivar(false);
     }
   };
 
@@ -405,6 +526,16 @@ function ModalDetallePadre({
           >
             {loadingRetirar ? <Loader2 size={13} className="animate-spin" /> : <UserX size={13} />}
             Retirar
+          </button>
+        )}
+        {padre.retirado && (
+          <button
+            onClick={handleReactivar}
+            disabled={loadingReactivar}
+            className="flex-1 flex items-center justify-center gap-1.5 h-9 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 text-xs font-bold rounded-xl transition-colors disabled:opacity-60"
+          >
+            {loadingReactivar ? <Loader2 size={13} className="animate-spin" /> : <UserCheck size={13} />}
+            Reactivar
           </button>
         )}
         <button
@@ -528,82 +659,3 @@ function TabEditar({ padre, onUpdated, onError }) {
   );
 }
 
-// ── Atoms ─────────────────────────────────────────────────────────────────────
-function Modal({ titulo, onClose, children }) {
-  return (
-    <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white z-10">
-          <p className="font-black text-stone-800 text-sm truncate pr-4">
-            {titulo}
-          </p>
-          <button onClick={onClose}>
-            <X size={18} className="text-stone-400 hover:text-stone-600" />
-          </button>
-        </div>
-        <div className="p-5 flex flex-col gap-3">{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, placeholder, type = "text" }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-bold text-stone-600">{label}</label>
-      <input
-        type={type}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400 transition-colors"
-      />
-    </div>
-  );
-}
-
-function BtnPrimary({ children, onClick, loading }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={loading}
-      className="h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-60 mt-1"
-    >
-      {loading ? <Loader2 size={16} className="animate-spin" /> : children}
-    </button>
-  );
-}
-
-function Row({ label, value }) {
-  return (
-    <div className="flex justify-between py-1.5 border-b border-stone-50">
-      <span className="text-stone-400 text-xs">{label}</span>
-      <span className="text-stone-700 text-xs font-semibold">{value}</span>
-    </div>
-  );
-}
-
-function Toast({ msg, type }) {
-  return (
-    <div
-      className={`fixed top-4 left-1/2 -translate-x-1/2 z-50 px-5 py-2.5 rounded-full text-sm font-bold shadow-lg
-      ${type === "err" ? "bg-red-500 text-white" : "bg-stone-800 text-white"}`}
-    >
-      {msg}
-    </div>
-  );
-}
-
-function LoadingRows() {
-  return Array(4)
-    .fill(0)
-    .map((_, i) => (
-      <div key={i} className="flex items-center gap-3 px-4 py-3">
-        <div className="w-10 h-10 rounded-full bg-stone-100 animate-pulse" />
-        <div className="flex-1 flex flex-col gap-1.5">
-          <div className="h-3 bg-stone-100 rounded-full w-2/3 animate-pulse" />
-          <div className="h-2.5 bg-stone-100 rounded-full w-1/2 animate-pulse" />
-        </div>
-      </div>
-    ));
-}

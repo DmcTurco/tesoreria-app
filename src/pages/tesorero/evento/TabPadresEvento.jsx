@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   AlertTriangle,
   UserCheck,
+  RotateCcw,
 } from "lucide-react";
 import { EVENTO_ESTADO } from "../../../constants/estados";
 import useApi from "@/hook/useApi";
@@ -274,9 +275,24 @@ function PadreChipConTurnos({ ep, evento, esTesorero, onRefresh, onToast }) {
 
 // Modal para marcar turnos individualmente
 function ModalTurnos({ ep, evento, onClose, onRefresh, onToast }) {
-  const [loading, setLoading] = useState(null); // turnoNum en proceso (1 o 2)
-  const [modalEx, setModalEx] = useState(false);
+  const [loading,     setLoading]     = useState(null); // turnoNum en proceso (1 o 2)
+  const [modalEx,     setModalEx]     = useState(false);
+  const [revertiendo, setRevertiendo] = useState(false);
   const api = useApi();
+
+  const revertirExoneracion = async () => {
+    if (!window.confirm(`¿Revertir exoneración de ${ep.padre?.nombre ?? "este padre"}?`)) return;
+    setRevertiendo(true);
+    try {
+      await api.put(`/evento-padres/${ep.id}/revertir-exoneracion`);
+      onToast("Exoneración revertida");
+      onRefresh();
+    } catch (e) {
+      onToast(e.message ?? "Error al revertir", "err");
+    } finally {
+      setRevertiendo(false);
+    }
+  };
 
   const padre    = ep.padre;
   const fechaStr = ep.fecha ? String(ep.fecha).slice(0, 10) : null;
@@ -379,16 +395,35 @@ function ModalTurnos({ ep, evento, onClose, onRefresh, onToast }) {
           })}
         </div>
 
-        {/* Acciones — exonerar / quitar */}
+        {/* Acciones — exonerar / revertir / quitar */}
         {evento.estado === EVENTO_ESTADO.ACTIVO && (
           <div className="flex gap-2 pt-1 border-t border-stone-100">
-            <button
-              onClick={() => setModalEx(true)}
-              className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl
-                bg-purple-50 hover:bg-purple-100 border border-purple-100 text-xs font-bold text-purple-500 transition-colors"
-            >
-              <ShieldOff size={12} /> Exonerar
-            </button>
+            {/* Exonerar — solo si no está exonerado */}
+            {ep.estado !== 4 && (
+              <button
+                onClick={() => setModalEx(true)}
+                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl
+                  bg-purple-50 hover:bg-purple-100 border border-purple-100 text-xs font-bold text-purple-500 transition-colors"
+              >
+                <ShieldOff size={12} /> Exonerar
+              </button>
+            )}
+
+            {/* Revertir exoneración — solo si está exonerado */}
+            {ep.estado === 4 && (
+              <button
+                onClick={revertirExoneracion}
+                disabled={revertiendo}
+                className="flex-1 flex items-center justify-center gap-1.5 h-9 rounded-xl
+                  bg-amber-50 hover:bg-amber-100 border border-amber-100 text-xs font-bold text-amber-600 transition-colors disabled:opacity-60"
+              >
+                {revertiendo
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : <><RotateCcw size={12} /> Revertir exoneración</>
+                }
+              </button>
+            )}
+
             <BotonQuitarPadre
               ep={ep}
               evento={evento}
@@ -520,11 +555,26 @@ function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
 
 // ── Vista plana: faena, reunión, actividad ────────────────────────────────────
 function TabPadresPlano({ evento, onToast, esTesorero }) {
-  const [padres,     setPadres]     = useState([]);
-  const [loading,    setLoading]    = useState(true);
-  const [modalEx,    setModalEx]    = useState(null);
-  const [marcando,   setMarcando]   = useState(null); // padre_id en proceso
+  const [padres,      setPadres]     = useState([]);
+  const [loading,     setLoading]    = useState(true);
+  const [modalEx,     setModalEx]    = useState(null);
+  const [marcando,    setMarcando]   = useState(null); // padre_id en proceso
+  const [revertiendo, setRevertiendo] = useState(null); // ep.id en proceso
   const api = useApi();
+
+  const revertirExoneracion = async (ep) => {
+    if (!window.confirm(`¿Revertir exoneración de ${ep.padre?.nombre ?? "este padre"}?`)) return;
+    setRevertiendo(ep.id);
+    try {
+      await api.put(`/evento-padres/${ep.id}/revertir-exoneracion`);
+      onToast("Exoneración revertida");
+      cargar();
+    } catch (e) {
+      onToast(e.message ?? "Error al revertir", "err");
+    } finally {
+      setRevertiendo(null);
+    }
+  };
 
   const marcarAsistencia = async (ep) => {
     setMarcando(ep.padre_id);
@@ -631,6 +681,22 @@ function TabPadresPlano({ evento, onToast, esTesorero }) {
                       flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
                   >
                     <ShieldOff size={12} className="text-purple-400" />
+                  </button>
+                )}
+
+                {/* Botón revertir exoneración — solo tesorero, exonerado */}
+                {esTesorero && ep.estado === 4 && (
+                  <button
+                    onClick={() => revertirExoneracion(ep)}
+                    disabled={revertiendo === ep.id}
+                    title="Revertir exoneración"
+                    className="w-7 h-7 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-100
+                      flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    {revertiendo === ep.id
+                      ? <Loader2 size={12} className="text-amber-400 animate-spin" />
+                      : <RotateCcw size={12} className="text-amber-500" />
+                    }
                   </button>
                 )}
               </div>

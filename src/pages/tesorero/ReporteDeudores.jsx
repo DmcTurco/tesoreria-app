@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Download, Printer, Loader2, AlertCircle,
-  CheckCircle, ChevronDown,
+  CheckCircle, ChevronDown, Search, UserX, FileDown,
 } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { useEventos } from "../../hook/useEventos";
 import { useMultas } from "../../hook/useMultas";
+import { usePadres } from "../../hook/usePadres";
+import useApi from "../../hook/useApi";
 import {
   EVENTO_TIPO, EVENTO_TIPO_LABEL,
   MULTA_ESTADO, EVENTO_PADRE_ESTADO,
 } from "../../constants/estados";
-import { formatFecha, today } from "../../utils/utility";
+import { formatFecha, today, filtrarTexto } from "../../utils/utility";
 
 // ── CSV helpers (mismo patrón que ExportarImportar) ───────────────────────────
 function csvEscape(val) {
@@ -36,6 +40,304 @@ function descargarCSV(contenido, nombre) {
 
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ReporteDeudores() {
+  const [tab, setTab] = useState("evento"); // "evento" | "padre"
+
+  return (
+    <div className="flex flex-col gap-5">
+      {/* Header */}
+      <div>
+        <h1 className="text-xl font-black text-stone-800">Reporte de Deudores</h1>
+        <p className="text-sm text-stone-400 mt-0.5">
+          Consulta deudas por evento o por padre
+        </p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex bg-stone-100 rounded-xl p-1 gap-1 w-full max-w-xs">
+        {[["evento", "Por evento"], ["padre", "Por padre"]].map(([k, l]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
+              ${tab === k ? "bg-white text-amber-600 shadow-sm" : "text-stone-500 hover:text-stone-700"}`}
+          >
+            {l}
+          </button>
+        ))}
+      </div>
+
+      {tab === "evento" ? <ReporteDeudoresPorEvento /> : <ReporteDeudaPorPadre />}
+    </div>
+  );
+}
+
+// ── Reporte por padre ─────────────────────────────────────────────────────────
+function ReporteDeudaPorPadre() {
+  const [search, setSearch]       = useState("");
+  const [padreSelec, setPadreSelec] = useState(null);
+  const [deuda, setDeuda]         = useState(null);
+  const [loading, setLoading]     = useState(false);
+  const [error, setError]         = useState(null);
+  const { padres, getPadres }     = usePadres();
+  const api                       = useApi();
+
+  useEffect(() => { getPadres({ conRetirados: true }); }, []);
+
+  const filtrados = filtrarTexto(padres, search, ["nombre", "codigo", "hijo"]).slice(0, 8);
+
+  const descargarPDF = () => {
+    if (!deuda || !padreSelec) return;
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const hoy  = new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
+
+    // ── Encabezado ──────────────────────────────────────────────────────────────
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Reporte de Deuda Pendiente", 14, 20);
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Generado el ${hoy}`, 14, 27);
+    doc.setTextColor(0, 0, 0);
+
+    // ── Datos del padre ──────────────────────────────────────────────────────────
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text("Datos del padre", 14, 38);
+
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const info = [
+      ["Nombre",  padreSelec.nombre],
+      ["Código",  padreSelec.codigo],
+      ["Alumno",  padreSelec.hijo],
+      ["Grado",   padreSelec.grado],
+      ["Estado",  padreSelec.retirado ? "Retirado" : "Activo"],
+    ];
+    info.forEach(([label, val], i) => {
+      doc.setFont("helvetica", "bold");
+      doc.text(`${label}:`, 14, 45 + i * 6);
+      doc.setFont("helvetica", "normal");
+      doc.text(val ?? "—", 38, 45 + i * 6);
+    });
+
+    // ── Tabla de deudas ──────────────────────────────────────────────────────────
+    autoTable(doc, {
+      startY: 78,
+      head: [["Descripción", "Tipo", "Total (S/)", "Pagado (S/)", "Saldo (S/)"]],
+      body: deuda.items.map((item) => [
+        item.descripcion,
+        item.tipo === "multa" ? "Multa" : "Cobro",
+        Number(item.monto).toFixed(2),
+        Number(item.pagado).toFixed(2),
+        Number(item.saldo).toFixed(2),
+      ]),
+      foot: [["", "Total pendiente", "", "", `S/ ${Number(deuda.total_deuda).toFixed(2)}`]],
+      headStyles:  { fillColor: [245, 158, 11], textColor: 255, fontStyle: "bold", fontSize: 8 },
+      footStyles:  { fillColor: [254, 243, 199], textColor: [120, 53, 15], fontStyle: "bold", fontSize: 9 },
+      bodyStyles:  { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: "auto" },
+        2: { halign: "right" },
+        3: { halign: "right" },
+        4: { halign: "right", textColor: [220, 38, 38], fontStyle: "bold" },
+      },
+      alternateRowStyles: { fillColor: [250, 250, 249] },
+      margin: { left: 14, right: 14 },
+    });
+
+    doc.save(`deuda_${padreSelec.codigo}_${today()}.pdf`);
+  };
+
+  const seleccionar = async (p) => {
+    setPadreSelec(p);
+    setSearch("");
+    setDeuda(null);
+    setError(null);
+    setLoading(true);
+    try {
+      const data = await api.get(`/padres/${p.id}/deuda-detalle`);
+      setDeuda(data);
+    } catch (e) {
+      setError(e.message ?? "Error al cargar deuda");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Buscador */}
+      <div className="bg-white rounded-2xl border border-stone-100 p-5 flex flex-col gap-3">
+        <p className="text-sm font-bold text-stone-700">Buscar padre</p>
+        <div className="relative">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPadreSelec(null); setDeuda(null); }}
+            placeholder="Nombre, código o alumno..."
+            className="w-full h-11 pl-9 pr-4 bg-stone-50 border border-stone-200 rounded-xl text-sm
+              text-stone-700 outline-none focus:border-amber-400 transition-colors"
+          />
+        </div>
+
+        {/* Resultados búsqueda */}
+        {search.length > 0 && !padreSelec && (
+          <div className="border border-stone-100 rounded-xl overflow-hidden">
+            {filtrados.length === 0 ? (
+              <p className="text-xs text-stone-400 px-4 py-3 text-center">Sin resultados</p>
+            ) : filtrados.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => seleccionar(p)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-amber-50 transition-colors text-left border-b border-stone-50 last:border-0"
+              >
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-amber-700">
+                    {p.nombre.split(" ").slice(0, 2).map((w) => w[0]).join("")}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold text-stone-700 truncate">{p.nombre}</p>
+                  <p className="text-[10px] text-stone-400">{p.codigo} · {p.hijo}</p>
+                </div>
+                {p.retirado && (
+                  <span className="text-[10px] font-bold bg-stone-100 text-stone-500 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                    <UserX size={10} /> Retirado
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Padre seleccionado */}
+        {padreSelec && (
+          <div className="flex items-center gap-3 bg-amber-50 rounded-xl px-4 py-3">
+            <div className="w-9 h-9 rounded-full bg-amber-200 flex items-center justify-center shrink-0">
+              <span className="text-xs font-black text-amber-800">
+                {padreSelec.nombre.split(" ").slice(0, 2).map((w) => w[0]).join("")}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-stone-800">{padreSelec.nombre}</p>
+              <p className="text-xs text-stone-500">{padreSelec.codigo} · {padreSelec.hijo} · {padreSelec.grado}</p>
+            </div>
+            {padreSelec.retirado && (
+              <span className="text-[10px] font-bold bg-stone-200 text-stone-500 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                <UserX size={10} /> Retirado
+              </span>
+            )}
+            <button
+              onClick={() => { setPadreSelec(null); setDeuda(null); setSearch(""); }}
+              className="text-xs text-stone-400 hover:text-stone-600 transition-colors shrink-0"
+            >
+              Cambiar
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Cargando */}
+      {loading && (
+        <div className="flex justify-center py-10">
+          <Loader2 size={24} className="text-amber-400 animate-spin" />
+        </div>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+          <AlertCircle size={16} className="text-red-400 shrink-0" />
+          <p className="text-sm text-red-500 font-medium">{error}</p>
+        </div>
+      )}
+
+      {/* Resultado deuda */}
+      {deuda && !loading && (
+        <div className="bg-white rounded-2xl border border-stone-100 p-5 flex flex-col gap-4">
+          {/* Totales + botón PDF */}
+          <div className="flex items-start justify-between gap-3">
+          <div className="flex gap-5">
+            <div>
+              <p className="text-2xl font-black text-stone-800">{deuda.items.length}</p>
+              <p className="text-xs text-stone-400">deudas pendientes</p>
+            </div>
+            <div>
+              <p className={`text-2xl font-black ${deuda.total_deuda > 0 ? "text-red-500" : "text-emerald-500"}`}>
+                S/ {Number(deuda.total_deuda).toFixed(2)}
+              </p>
+              <p className="text-xs text-stone-400">total pendiente</p>
+            </div>
+          </div>
+          {deuda.items.length > 0 && (
+            <button
+              onClick={descargarPDF}
+              className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600
+                text-white text-xs font-bold rounded-xl transition-colors shrink-0"
+            >
+              <FileDown size={13} /> PDF
+            </button>
+          )}
+          </div>
+
+          {deuda.items.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                <CheckCircle size={18} className="text-emerald-500" />
+              </div>
+              <p className="text-sm font-bold text-stone-600">Sin deudas pendientes</p>
+              <p className="text-xs text-stone-400">Este padre está al día</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs min-w-[460px]">
+                <thead>
+                  <tr className="border-b-2 border-stone-100">
+                    {["Descripción", "Tipo", "Total", "Pagado", "Saldo"].map((h, i) => (
+                      <th key={h} className={`pb-2.5 text-[10px] font-bold text-stone-400 uppercase tracking-wide px-2 ${i >= 2 ? "text-right" : "text-left"}`}>
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {deuda.items.map((item, i) => (
+                    <tr key={i} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
+                      <td className="py-2.5 px-2 font-semibold text-stone-700">{item.descripcion}</td>
+                      <td className="py-2.5 px-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          item.tipo === "multa" ? "bg-red-50 text-red-500" : "bg-blue-50 text-blue-500"
+                        }`}>
+                          {item.tipo === "multa" ? "Multa" : "Cobro"}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-2 text-right text-stone-600">S/ {Number(item.monto).toFixed(2)}</td>
+                      <td className="py-2.5 px-2 text-right text-emerald-600">S/ {Number(item.pagado).toFixed(2)}</td>
+                      <td className="py-2.5 px-2 text-right font-bold text-red-500">S/ {Number(item.saldo).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-stone-200">
+                    <td colSpan={4} className="py-2.5 px-2 text-right text-xs font-bold text-stone-500">Total pendiente:</td>
+                    <td className="py-2.5 px-2 text-right text-sm font-black text-red-500">
+                      S/ {Number(deuda.total_deuda).toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Reporte por evento (lógica original, renombrada) ─────────────────────────
+function ReporteDeudoresPorEvento() {
   const { eventos, getEventos, loading: loadingEventos, getEventoMovimientos } = useEventos();
   const { getMultas } = useMultas();
 
@@ -179,7 +481,6 @@ export default function ReporteDeudores() {
         <title>Reporte de Deudores – ${eventoInfo.titulo}</title>
         <style>
           * { box-sizing: border-box; margin: 0; padding: 0; }
-          body { font-family: Arial, sans-serif; font-size: 12px; padding: 28px; color: #1c1917; }
           .encabezado { display: flex; justify-content: space-between; align-items: flex-start;
                         border-bottom: 2px solid #e7e5e4; padding-bottom: 14px; margin-bottom: 18px; }
           .encabezado h1 { font-size: 18px; font-weight: 900; margin-bottom: 4px; }
@@ -200,10 +501,8 @@ export default function ReporteDeudores() {
           .num { text-align: right; }
           .ok   { color: #16a34a; }
           .deuda { color: #dc2626; font-weight: 700; }
-          tfoot td { font-weight: 700; background: #f5f5f4; border-top: 2px solid #d6d3d1; padding: 10px; }
-          .pie { margin-top: 20px; color: #a8a29e; font-size: 10px; text-align: right;
-                border-top: 1px solid #e7e5e4; padding-top: 10px; }
-          @media print { body { padding: 16px; } }
+          tfoot td { font-weight: 700; border-top: 2px solid #d6d3d1; background: #f5f5f4; }
+          @media print { body { padding: 0; } }
         </style>
       </head>
       <body>
@@ -211,148 +510,108 @@ export default function ReporteDeudores() {
           <div>
             <h1>Reporte de Deudores</h1>
             <div class="meta">
-              <div><strong>Evento:</strong> ${eventoInfo.titulo}</div>
-              <div><strong>Tipo:</strong> ${EVENTO_TIPO_LABEL[eventoInfo.tipo]}&nbsp;&nbsp;|&nbsp;&nbsp;<strong>Fecha:</strong> ${formatFecha(eventoInfo.fecha_inicio)}</div>
-              <div><strong>Generado:</strong> ${fechaHoy}</div>
+              Evento: <strong>${eventoInfo.titulo}</strong><br>
+              Tipo: ${EVENTO_TIPO_LABEL[eventoInfo.tipo] ?? "—"} &nbsp;·&nbsp; Fecha: ${eventoInfo.fecha_inicio}<br>
+              Generado el ${fechaHoy}
             </div>
           </div>
-          <div class="logo">Sistema de Tesorería<br>APAFA</div>
+          <div class="logo">Sistema de Tesorería</div>
         </div>
 
         <div class="stats">
           <div class="stat">
             <div class="stat-val">${deudores.length}</div>
-            <div class="stat-lbl">Padres con deuda</div>
+            <div class="stat-lbl">Deudores</div>
           </div>
           <div class="stat">
             <div class="stat-val rojo">S/ ${totalSaldo.toFixed(2)}</div>
-            <div class="stat-lbl">Total pendiente</div>
+            <div class="stat-lbl">Saldo total pendiente</div>
           </div>
         </div>
 
         <table>
           <thead>
             <tr>
-              <th>#</th>
-              <th>Nombre del padre / madre</th>
-              <th>Hijo/a</th>
-              <th>Grado</th>
-              <th style="text-align:right">Monto total</th>
-              <th style="text-align:right">Pagado</th>
-              <th style="text-align:right">Saldo pendiente</th>
+              <th>#</th><th>Nombre</th><th>Alumno/a</th><th>Grado</th>
+              <th class="num">Total</th><th class="num">Pagado</th><th class="num">Saldo</th>
             </tr>
           </thead>
           <tbody>${filasHtml}</tbody>
           <tfoot>
             <tr>
-              <td colspan="6" style="text-align:right">TOTAL PENDIENTE:</td>
+              <td colspan="6" style="text-align:right">Total pendiente:</td>
               <td class="num deuda">S/ ${totalSaldo.toFixed(2)}</td>
             </tr>
           </tfoot>
         </table>
-
-        <div class="pie">Sistema de Tesorería APAFA &nbsp;·&nbsp; ${fechaHoy}</div>
-        <script>window.print();<\/script>
       </body>
       </html>`;
 
-    const ventana = window.open("", "_blank");
-    ventana.document.write(html);
-    ventana.document.close();
+    const win = window.open("", "_blank", "width=900,height=650");
+    if (!win) return;
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    setTimeout(() => { win.print(); }, 400);
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
+  const tiposOrden = [
+    EVENTO_TIPO.GUARDIA, EVENTO_TIPO.FAENA, EVENTO_TIPO.REUNION,
+    EVENTO_TIPO.CUOTA, EVENTO_TIPO.ACTIVIDAD,
+  ];
+  const eventosFiltrados = [...eventos].sort(
+    (a, b) => tiposOrden.indexOf(a.tipo) - tiposOrden.indexOf(b.tipo),
+  );
+
   return (
     <div className="flex flex-col gap-5">
-      {/* Header */}
-      <div>
-        <h1 className="text-xl font-black text-stone-800">Reporte de Deudores</h1>
-        <p className="text-sm text-stone-400 mt-0.5">
-          Selecciona un evento para ver qué padres tienen saldo pendiente
-        </p>
-      </div>
 
       {/* Selector de evento */}
       <div className="bg-white rounded-2xl border border-stone-100 p-5 flex flex-col gap-3">
-        <p className="text-sm font-bold text-stone-700">Evento</p>
+        <p className="text-sm font-bold text-stone-700">Seleccionar evento</p>
         <div className="relative" ref={dropdownRef}>
-          {/* Botón trigger */}
           <button
-            onClick={() => !loadingEventos && setDropdownAbierto((v) => !v)}
-            disabled={loadingEventos}
-            className={`w-full h-11 pl-4 pr-10 bg-stone-50 border rounded-xl text-sm text-left
-              transition-colors disabled:opacity-50
-              ${dropdownAbierto ? "border-amber-400" : "border-stone-200"}
-              ${eventoInfo ? "text-stone-700" : "text-stone-400"}`}
+            onClick={() => setDropdownAbierto((v) => !v)}
+            className="w-full h-11 px-4 bg-stone-50 border border-stone-200 rounded-xl text-sm
+              text-stone-700 flex items-center justify-between gap-2 hover:border-amber-400 transition-colors"
           >
-            {eventoInfo ? (
-              <span className="flex items-center gap-2">
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">
-                  {EVENTO_TIPO_LABEL[eventoInfo.tipo]}
-                </span>
-                <span className="truncate">{eventoInfo.titulo}</span>
-                {eventoInfo.fecha_inicio?.slice(0, 10) > today() && (
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
-                    Próximo
-                  </span>
-                )}
-              </span>
-            ) : (
-              "— Selecciona un evento —"
-            )}
+            <span className={eventoId ? "text-stone-800 font-medium" : "text-stone-400"}>
+              {eventoId
+                ? eventosFiltrados.find((e) => e.id === Number(eventoId))?.titulo ?? "Evento"
+                : "Elige un evento..."}
+            </span>
+            <ChevronDown size={15} className="text-stone-400 shrink-0" />
           </button>
-          <ChevronDown
-            size={15}
-            className={`absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none transition-transform ${dropdownAbierto ? "rotate-180" : ""}`}
-          />
 
-          {/* Lista desplegable */}
           {dropdownAbierto && (
-            <div className="absolute z-20 top-full mt-1 w-full bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
-              {/* Opción vacía */}
-              <button
-                onClick={() => { handleSelect({ target: { value: "" } }); setDropdownAbierto(false); }}
-                className="w-full px-4 py-2.5 text-left text-sm text-stone-400 hover:bg-stone-50 transition-colors"
-              >
-                — Selecciona un evento —
-              </button>
-
-              {eventos.map((e) => {
-                const futuro = e.fecha_inicio && e.fecha_inicio.slice(0, 10) > today();
-                const seleccionado = String(e.id) === String(eventoId);
-                return (
-                  <button
-                    key={e.id}
-                    onClick={() => { handleSelect({ target: { value: e.id } }); setDropdownAbierto(false); }}
-                    className={`w-full px-4 py-2.5 text-left transition-colors flex items-center gap-2
-                      ${seleccionado ? "bg-amber-50" : futuro ? "bg-blue-50/60 hover:bg-blue-50" : "hover:bg-stone-50"}`}
-                  >
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">
-                      {EVENTO_TIPO_LABEL[e.tipo]}
-                    </span>
-                    <span className="flex-1 min-w-0">
-                      <span className="text-sm font-semibold text-stone-700 block truncate">
-                        {e.titulo}
-                      </span>
-                      <span className="text-[10px] text-stone-400">
-                        {formatFecha(e.fecha_inicio)}
-                      </span>
-                    </span>
-                    {futuro && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
-                        Próximo
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
+            <div className="absolute z-20 top-full mt-1 left-0 right-0 bg-white border border-stone-200
+              rounded-xl shadow-lg max-h-64 overflow-y-auto">
+              {eventosFiltrados.map((ev) => (
+                <button
+                  key={ev.id}
+                  onClick={() => {
+                    setEventoId(String(ev.id));
+                    cargarDeudores(ev.id);
+                    setDropdownAbierto(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm
+                    hover:bg-amber-50 transition-colors border-b border-stone-50 last:border-0
+                    ${Number(eventoId) === ev.id ? "bg-amber-50 text-amber-700 font-bold" : "text-stone-700"}`}
+                >
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-stone-100 text-stone-500 shrink-0">
+                    {EVENTO_TIPO_LABEL[ev.tipo] ?? ev.tipo}
+                  </span>
+                  {ev.titulo}
+                </button>
+              ))}
             </div>
           )}
         </div>
       </div>
 
-      {/* Cargando */}
-      {loadingData && (
+      {/* Loading */}
+      {(loadingEventos || loadingData) && (
         <div className="flex justify-center py-10">
           <Loader2 size={24} className="text-amber-400 animate-spin" />
         </div>
@@ -366,105 +625,87 @@ export default function ReporteDeudores() {
         </div>
       )}
 
-      {/* Resultado */}
-      {!loadingData && eventoInfo && !error && (
+      {/* Tabla de deudores */}
+      {!loadingData && eventoInfo && (
         <div className="bg-white rounded-2xl border border-stone-100 p-5 flex flex-col gap-4">
-
-          {/* Stats + botones de exportar */}
+          {/* Stats + acciones */}
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="flex gap-5">
               <div>
                 <p className="text-2xl font-black text-stone-800">{deudores.length}</p>
-                <p className="text-xs text-stone-400">padres con deuda</p>
+                <p className="text-xs text-stone-400">deudores</p>
               </div>
               <div>
                 <p className="text-2xl font-black text-red-500">
                   S/ {totalSaldo.toFixed(2)}
                 </p>
-                <p className="text-xs text-stone-400">total pendiente</p>
+                <p className="text-xs text-stone-400">saldo total</p>
               </div>
             </div>
 
             {deudores.length > 0 && (
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-2">
                 <button
                   onClick={handleExportarCSV}
-                  className="flex items-center gap-1.5 h-9 px-3 bg-stone-100 hover:bg-stone-200
+                  className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200
                     text-stone-600 text-xs font-bold rounded-xl transition-colors"
                 >
-                  <Download size={13} /> Excel / CSV
+                  <Download size={13} /> CSV
                 </button>
                 <button
                   onClick={handleImprimir}
-                  className="flex items-center gap-1.5 h-9 px-3 bg-amber-500 hover:bg-amber-600
+                  className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600
                     text-white text-xs font-bold rounded-xl transition-colors"
                 >
-                  <Printer size={13} /> PDF / Imprimir
+                  <Printer size={13} /> Imprimir
                 </button>
               </div>
             )}
           </div>
 
-          {/* Tabla / vacío */}
           {deudores.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center">
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
               <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
                 <CheckCircle size={18} className="text-emerald-500" />
               </div>
-              <p className="text-sm font-bold text-stone-600">Todos al día</p>
-              <p className="text-xs text-stone-400">
-                No hay padres con deuda pendiente en este evento
-              </p>
+              <p className="text-sm font-bold text-stone-600">Sin deudores</p>
+              <p className="text-xs text-stone-400">Todos al día en este evento</p>
             </div>
           ) : (
             <div className="overflow-x-auto -mx-1">
-              <table className="w-full text-xs min-w-[540px]">
+              <table className="w-full text-xs min-w-[520px]">
                 <thead>
                   <tr className="border-b-2 border-stone-100">
-                    {["#", "Nombre", "Hijo/a", "Grado", "Total", "Pagado", "Saldo"].map(
-                      (h, i) => (
-                        <th
-                          key={h}
-                          className={`pb-2.5 text-[10px] font-bold text-stone-400 uppercase tracking-wide px-2
-                            ${i >= 4 ? "text-right" : "text-left"}`}
-                        >
-                          {h}
-                        </th>
-                      ),
-                    )}
+                    {["#", "Nombre", "Alumno/a", "Grado", "Total", "Pagado", "Saldo"].map((h, i) => (
+                      <th
+                        key={h}
+                        className={`pb-2.5 text-[10px] font-bold text-stone-400 uppercase tracking-wide px-2
+                          ${i >= 4 ? "text-right" : "text-left"}`}
+                      >
+                        {h}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
                   {deudores.map((d, i) => (
-                    <tr
-                      key={i}
-                      className="border-b border-stone-50 hover:bg-stone-50 transition-colors"
-                    >
-                      <td className="py-2.5 px-2 text-stone-400">{i + 1}</td>
-                      <td className="py-2.5 px-2">
+                    <tr key={i} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
+                      <td className="py-2 px-2 text-stone-400">{i + 1}</td>
+                      <td className="py-2 px-2">
                         <p className="font-bold text-stone-700">{d.nombre}</p>
-                        <p className="text-stone-400 text-[10px]">{d.codigo}</p>
+                        <p className="text-[10px] text-stone-400">{d.codigo}</p>
                       </td>
-                      <td className="py-2.5 px-2 text-stone-600">{d.hijo}</td>
-                      <td className="py-2.5 px-2 text-stone-600">{d.grado}</td>
-                      <td className="py-2.5 px-2 text-right text-stone-600">
-                        S/ {d.monto_total.toFixed(2)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right text-emerald-600">
-                        S/ {d.pagado.toFixed(2)}
-                      </td>
-                      <td className="py-2.5 px-2 text-right font-bold text-red-500">
-                        S/ {d.saldo.toFixed(2)}
-                      </td>
+                      <td className="py-2 px-2 text-stone-600">{d.hijo}</td>
+                      <td className="py-2 px-2 text-stone-500">{d.grado}</td>
+                      <td className="py-2 px-2 text-right text-stone-600">S/ {d.monto_total.toFixed(2)}</td>
+                      <td className="py-2 px-2 text-right text-emerald-600">S/ {d.pagado.toFixed(2)}</td>
+                      <td className="py-2 px-2 text-right font-bold text-red-500">S/ {d.saldo.toFixed(2)}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-stone-200">
-                    <td
-                      colSpan={6}
-                      className="py-2.5 px-2 text-right text-xs font-bold text-stone-500"
-                    >
+                    <td colSpan={6} className="py-2.5 px-2 text-right text-xs font-bold text-stone-500">
                       Total pendiente:
                     </td>
                     <td className="py-2.5 px-2 text-right text-sm font-black text-red-500">

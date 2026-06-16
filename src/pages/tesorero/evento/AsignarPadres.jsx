@@ -385,61 +385,56 @@ function AsignarManual({ evento, onDone, onToast }) {
 
 // ── Actividad: toggle manual / todos ─────────────────────────────────────────
 function AsignarActividad({ evento, onDone, onToast }) {
-  const [modo, setModo] = useState("manual"); // "manual" | "auto"
+  const [modo, setModo] = useState("manual");
   const [search, setSearch] = useState("");
   const [sel, setSel] = useState(new Set());
   const [saving, setSaving] = useState(false);
-  const [yaAsignados, setYaAsignados] = useState([]);
+  const [asignados, setAsignados] = useState([]); // objetos completos con padre
   const { padres, getPadres, loading } = usePadres();
   const api = useApi();
 
-  useEffect(() => {
-    getPadres();
+  const cargarAsignados = () =>
     api
       .get(`/eventos/${evento.id}/padres`)
-      .then((r) =>
-        setYaAsignados((Array.isArray(r) ? r : []).map((ep) => ep.padre_id)),
-      )
+      .then((r) => setAsignados(Array.isArray(r) ? r : []))
       .catch(() => {});
+
+  useEffect(() => {
+    getPadres();
+    cargarAsignados();
   }, []);
 
-  const toggle = (id) => {
+  const yaAsignadosIds = asignados.map((ep) => ep.padre_id);
+
+  const toggle = (id) =>
     setSel((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
     });
-  };
 
   const toggleTodos = () => {
-    const disponibles = padres.filter((p) => !yaAsignados.includes(p.id));
-    if (sel.size === disponibles.length) {
-      setSel(new Set());
-    } else {
-      setSel(new Set(disponibles.map((p) => p.id)));
-    }
+    const disponibles = padres.filter((p) => !yaAsignadosIds.includes(p.id));
+    setSel(sel.size === disponibles.length ? new Set() : new Set(disponibles.map((p) => p.id)));
   };
 
   const handleSave = async () => {
     const ids =
       modo === "auto"
-        ? padres.filter((p) => !yaAsignados.includes(p.id)).map((p) => p.id)
+        ? padres.filter((p) => !yaAsignadosIds.includes(p.id)).map((p) => p.id)
         : [...sel];
 
-    if (ids.length === 0) {
-      onToast("No hay padres para asignar", "err");
-      return;
-    }
+    if (ids.length === 0) { onToast("No hay padres para asignar", "err"); return; }
     setSaving(true);
     try {
       await Promise.all(
         ids.map((padreId) =>
-          api.post(`/eventos/${evento.id}/agregar-padre`, {
-            padre_id: padreId,
-          }),
+          api.post(`/eventos/${evento.id}/agregar-padre`, { padre_id: padreId }),
         ),
       );
-      onDone(`${ids.length} padre(s) asignados correctamente`);
+      onToast(`${ids.length} padre(s) asignados`);
+      setSel(new Set());
+      await cargarAsignados();
     } catch (e) {
       onToast(e.message ?? "Error al asignar", "err");
     } finally {
@@ -448,23 +443,43 @@ function AsignarActividad({ evento, onDone, onToast }) {
   };
 
   const disponibles = filtrarTexto(
-    padres.filter((p) => !yaAsignados.includes(p.id)),
+    padres.filter((p) => !yaAsignadosIds.includes(p.id)),
     search,
     ["nombre", "hijo"],
   );
-
-  const totalDisponibles = padres.filter(
-    (p) => !yaAsignados.includes(p.id),
-  ).length;
+  const totalDisponibles = padres.filter((p) => !yaAsignadosIds.includes(p.id)).length;
 
   return (
     <div className="flex flex-col gap-4">
-      {/* Toggle */}
+
+      {/* Lista de ya asignados */}
+      {asignados.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wide">
+            Asignados ({asignados.length})
+          </p>
+          <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50 max-h-44 overflow-y-auto">
+            {asignados.map((ep) => (
+              <div key={ep.id} className="flex items-center gap-3 px-4 py-2.5">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-emerald-700">
+                    {ep.padre?.nombre?.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "?"}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-stone-700 truncate">{ep.padre?.nombre ?? "—"}</p>
+                  <p className="text-[10px] text-stone-400">{ep.padre?.hijo}</p>
+                </div>
+                <Check size={12} className="text-emerald-500 shrink-0" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Toggle modo */}
       <div className="flex bg-stone-100 rounded-xl p-1 gap-1">
-        {[
-          ["manual", "Seleccionar padres"],
-          ["auto", "Todos los padres"],
-        ].map(([v, l]) => (
+        {[["manual", "Seleccionar"], ["auto", "Todos"]].map(([v, l]) => (
           <button
             key={v}
             onClick={() => setModo(v)}
@@ -483,12 +498,8 @@ function AsignarActividad({ evento, onDone, onToast }) {
             <Users size={22} className="text-amber-600" />
           </div>
           <div>
-            <p className="text-sm font-black text-amber-800">
-              Todos los padres disponibles
-            </p>
-            <p className="text-xs text-amber-600 mt-0.5">
-              {totalDisponibles} padre(s) serán asignados
-            </p>
+            <p className="text-sm font-black text-amber-800">Todos los padres disponibles</p>
+            <p className="text-xs text-amber-600 mt-0.5">{totalDisponibles} padre(s) serán asignados</p>
           </div>
           <button
             onClick={handleSave}
@@ -496,11 +507,7 @@ function AsignarActividad({ evento, onDone, onToast }) {
             className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold
               rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
           >
-            {saving ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              "Confirmar asignación"
-            )}
+            {saving ? <Loader2 size={16} className="animate-spin" /> : "Confirmar asignación"}
           </button>
         </div>
       )}
@@ -509,24 +516,14 @@ function AsignarActividad({ evento, onDone, onToast }) {
       {modo === "manual" && (
         <>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-bold text-stone-500">
-              {sel.size} de {totalDisponibles} seleccionados
-            </p>
-            <button
-              onClick={toggleTodos}
-              className="text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors"
-            >
-              {sel.size === totalDisponibles
-                ? "Deseleccionar todos"
-                : "Seleccionar todos"}
+            <p className="text-xs font-bold text-stone-500">{sel.size} de {totalDisponibles} seleccionados</p>
+            <button onClick={toggleTodos} className="text-xs font-bold text-amber-600 hover:text-amber-700 transition-colors">
+              {sel.size === totalDisponibles ? "Deseleccionar todos" : "Seleccionar todos"}
             </button>
           </div>
 
           <div className="relative">
-            <Search
-              size={13}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none"
-            />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -536,12 +533,7 @@ function AsignarActividad({ evento, onDone, onToast }) {
             />
           </div>
 
-          <ListaPadres
-            padres={disponibles}
-            loading={loading}
-            sel={sel}
-            onToggle={toggle}
-          />
+          <ListaPadres padres={disponibles} loading={loading} sel={sel} onToggle={toggle} />
 
           <button
             onClick={handleSave}
@@ -549,14 +541,19 @@ function AsignarActividad({ evento, onDone, onToast }) {
             className="w-full h-11 bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold
               rounded-xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
           >
-            {saving ? (
-              <Loader2 size={16} className="animate-spin" />
-            ) : (
-              `Asignar ${sel.size > 0 ? sel.size + " padre(s)" : ""}`
-            )}
+            {saving ? <Loader2 size={16} className="animate-spin" /> : `Asignar ${sel.size > 0 ? sel.size + " padre(s)" : ""}`}
           </button>
         </>
       )}
+
+      {/* Botón listo */}
+      <button
+        onClick={() => onDone("Asignación completada")}
+        className="w-full h-10 border border-stone-200 text-stone-500 text-sm font-bold
+          rounded-xl hover:bg-stone-50 transition-colors"
+      >
+        Listo
+      </button>
     </div>
   );
 }

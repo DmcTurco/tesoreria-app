@@ -32,7 +32,7 @@ const TIPOS = [
   {
     value: "4",
     label: "Actividad",
-    desc: "Evento especial, manual o general",
+    desc: "Cuota para padres seleccionados",
     color: "bg-purple-50 text-purple-600 border-purple-200",
   },
 ];
@@ -411,7 +411,7 @@ function Paso1({ form, set, isGuardia, isCobro, isActividad, setForm }) {
       ) : isActividad ? (
         <div className="flex flex-col gap-1">
           <label className="text-xs font-bold text-stone-600">
-            Monto a devolver por padre (S/)
+            Monto del cobro (S/) *
           </label>
           <input
             type="number"
@@ -421,7 +421,7 @@ function Paso1({ form, set, isGuardia, isCobro, isActividad, setForm }) {
             className="h-10 px-3 bg-stone-50 border border-stone-200 rounded-xl text-sm text-stone-700 outline-none focus:border-amber-400"
           />
           <p className="text-[11px] text-stone-400">
-            Opcional. Si lo indicas, se usará para hacer seguimiento de pagos.
+            Se asignará a cada padre que selecciones.
           </p>
         </div>
       ) : (
@@ -488,7 +488,7 @@ function PasoRevision({ form, tipo }) {
           />
         ) : isActividad && Number(form.multa_monto) > 0 ? (
           <Row
-            label="Monto a devolver"
+            label="Monto del cobro"
             value={`S/ ${Number(form.multa_monto).toFixed(2)}`}
           />
         ) : (

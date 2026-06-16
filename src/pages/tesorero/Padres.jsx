@@ -118,7 +118,7 @@ export default function Padres() {
                     <p className="text-sm font-bold text-stone-700 line-clamp-1 wrap-break-word">
                       {p.nombre}
                     </p>
-                    {p.retirado && (
+                    {!!p.retirado && (
                       <span className="shrink-0 text-[10px] font-bold bg-stone-200 text-stone-500 px-1.5 py-0.5 rounded-full">
                         Retirado
                       </span>
@@ -432,7 +432,7 @@ function ModalDetallePadre({
         <span className="text-xs text-stone-400">
           {padre.grado} · {padre.hijo}
         </span>
-        {padre.retirado && (
+        {!!padre.retirado && (
           <span className="text-xs font-bold bg-stone-200 text-stone-500 px-2 py-0.5 rounded-full">
             Retirado
           </span>
@@ -528,7 +528,7 @@ function ModalDetallePadre({
             Retirar
           </button>
         )}
-        {padre.retirado && (
+        {!!padre.retirado && (
           <button
             onClick={handleReactivar}
             disabled={loadingReactivar}

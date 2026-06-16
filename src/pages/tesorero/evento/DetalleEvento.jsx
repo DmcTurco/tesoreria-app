@@ -162,7 +162,7 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                         {evento.hora_inicio && (
                             <Row label="Horario" value={`${evento.hora_inicio} — ${evento.hora_fin}`} />
                         )}
-                        {evento.tipo === 3 ? (
+                        {(evento.tipo === 3 || evento.tipo === 4) ? (
                             <Row label="Monto del cobro" value={`S/ ${Number(evento.multa_monto).toFixed(2)}`} />
                         ) : (
                             <Row label="Multa" value={evento.tiene_multa ? `Sí — S/ ${Number(evento.multa_monto).toFixed(2)}` : "No"} />
@@ -203,7 +203,7 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                             </div>
                         )}
 
-                        {evento.tipo === 3 ? (
+                        {(evento.tipo === 3 || evento.tipo === 4) ? (
                             <Field label="Monto del cobro (S/)" type="number"
                                 value={form.multa_monto} onChange={set("multa_monto")} placeholder="50.00" />
                         ) : (

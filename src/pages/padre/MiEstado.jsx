@@ -83,6 +83,7 @@ export default function MiEstado() {
   hoy.setHours(0, 0, 0, 0);
 
   function esFuturo(ep) {
+    if (ep.evento?.tipo === 4) return false; // actividad = cobro inmediato, nunca "Próximo"
     const fechaStr = ep.evento?.fecha_inicio;
     if (!fechaStr) return false;
     const [y, m, d] = fechaStr.slice(0, 10).split("-");

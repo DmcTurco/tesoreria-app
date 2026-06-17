@@ -110,7 +110,7 @@ export default function CrearEvento({ onBack, onCreated }) {
         return false;
       }
     }
-    if (isCobro && (!form.multa_monto || Number(form.multa_monto) <= 0)) {
+    if ((isCobro || isActividad) && (!form.multa_monto || Number(form.multa_monto) <= 0)) {
       showToast("Ingresa el monto del cobro", "err");
       return false;
     }

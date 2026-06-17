@@ -295,13 +295,13 @@ export default function Movimientos() {
               <div className="flex justify-center py-10">
                 <Loader2 size={24} className="text-amber-400 animate-spin" />
               </div>
-            ) : eventos.filter((e) => e.tipo === 3).length === 0 ? (
+            ) : eventos.filter((e) => [0, 3, 4].includes(e.tipo)).length === 0 ? (
               <p className="text-center text-stone-400 text-sm py-10">
-                Sin eventos de cuota
+                Sin eventos
               </p>
             ) : (
               eventos
-                .filter((e) => e.tipo === 3)
+                .filter((e) => [0, 3, 4].includes(e.tipo))
                 .map((e) => {
                   const esFuturo = e.fecha_inicio && e.fecha_inicio.slice(0, 10) > today();
                   return (
@@ -338,11 +338,23 @@ export default function Movimientos() {
                       <div className="ml-12 flex flex-col gap-1.5">
                         <div className="flex gap-2">
                           <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
-                            <p className="text-[10px] text-stone-400">Padres</p>
-                            <p className="text-xs font-black text-stone-700">
-                              {e.resumen_pagos.pagados}
-                              <span className="font-normal text-stone-400">/{e.resumen_pagos.total_padres}</span>
-                            </p>
+                            {e.tipo === 0 ? (
+                              <>
+                                <p className="text-[10px] text-stone-400">Multas</p>
+                                <p className="text-xs font-black text-stone-700">
+                                  {e.resumen_pagos.multas_count ?? 0}
+                                  <span className="font-normal text-stone-400"> generadas</span>
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <p className="text-[10px] text-stone-400">Padres</p>
+                                <p className="text-xs font-black text-stone-700">
+                                  {e.resumen_pagos.pagados}
+                                  <span className="font-normal text-stone-400">/{e.resumen_pagos.total_padres}</span>
+                                </p>
+                              </>
+                            )}
                           </div>
                           <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
                             <p className="text-[10px] text-emerald-600">Recaudado</p>

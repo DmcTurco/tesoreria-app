@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Search,
   CheckCircle,
@@ -25,8 +26,8 @@ export default function Multas() {
   const [modal, setModal] = useState(null); // { type: "exonerar", multa }
   const [toast, setToast] = useState(null);
 
-  const { loading, error, multas, getMultas, pagarMulta, exonerarMulta } =
-    useMultas();
+  const navigate = useNavigate();
+  const { loading, error, multas, getMultas, exonerarMulta } = useMultas();
 
   // Carga al montar y cuando cambia el filtro de estado
   useEffect(() => {
@@ -41,15 +42,9 @@ export default function Multas() {
   const reload = () =>
     getMultas({ estado: filtro !== "" ? Number(filtro) : null });
 
-  const handlePagar = async (multa) => {
-    try {
-      await pagarMulta(multa.id);
-      showToast("Multa cobrada y registrada como ingreso");
-      reload();
-    } catch (e) {
-      showToast(e.message ?? "Error", "err");
-    }
-  };
+  // El cobro de multas se hace por el flujo oficial de abonos
+  // (pagarMulta fue eliminado del hook y del backend)
+  const handlePagar = () => navigate("/dashboard/pagos/nuevo");
 
   const filtradas = filtrarTexto(multas, search, [
     (m) => m.padre?.nombre,

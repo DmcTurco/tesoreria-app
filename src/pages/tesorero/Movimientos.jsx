@@ -8,35 +8,30 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronLeft,
-  Users,
   X,
   ExternalLink,
   Pencil,
   Link,
 } from "lucide-react";
 import { useMovimientos } from "../../hook/useMovimientos";
-import { useEventos } from "../../hook/useEventos";
 import {
   MOVIMIENTO_TIPO,
   MOVIMIENTO_CATEGORIA_LABEL,
   MOVIMIENTO_CATEGORIA,
 } from "../../constants/estados";
 import { formatFecha, Toast, today } from "../../utils/utility";
-import MovimientoEventoDetalle from "./movimiento/MovimientoEventoDetalle";
 import useApi from "../../hook/useApi";
-import ModalRecibosEvento from "../../components/ModalRecibosEvento";
 
+// Movimientos = caja pura (ingresos/egresos cronológicos).
+// El detalle de dinero por evento vive en Eventos → Detalle → Pagos.
 export default function Movimientos() {
   const [filtroTipo, setFiltroTipo] = useState("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 10;
-  const [tabPrincipal, setTabPrincipal] = useState("todos"); // "todos" | "eventos"
   const [modal, setModal] = useState(false);
   const [modalEditar,   setModalEditar]   = useState(null);
   const [modalEliminar, setModalEliminar] = useState(null);
-  const [modalRecibos,  setModalRecibos]  = useState(null); // evento
   const [toast, setToast] = useState(null);
-  const [eventoDetalle, setEventoDetalle] = useState(null);
 
   const {
     loading,
@@ -53,20 +48,9 @@ export default function Movimientos() {
 
   const totalPages = Math.ceil(totalRegistros / PER_PAGE);
 
-  const {
-    loading: loadingEventos,
-    eventos,
-    getEventos,
-    getEventoMovimientos,
-  } = useEventos();
-
   useEffect(() => {
     getMovimientos({ tipo: filtroTipo !== "" ? Number(filtroTipo) : null, page, per_page: PER_PAGE });
   }, [filtroTipo, page]);
-
-  useEffect(() => {
-    if (tabPrincipal === "eventos") getEventos();
-  }, [tabPrincipal]);
 
   const showToast = (msg, type = "ok") => {
     setToast({ msg, type });
@@ -87,17 +71,6 @@ export default function Movimientos() {
     }
   };
 
-  if (eventoDetalle) {
-    return (
-      <MovimientoEventoDetalle
-        evento={eventoDetalle}
-        getEventoMovimientos={getEventoMovimientos}
-        onBack={() => setEventoDetalle(null)}
-        onToast={showToast}
-      />
-    );
-  }
-
   return (
     // h calculado: 100dvh - header mobile (3.5rem) - bottom nav (3.5rem) - padding wrapper (3rem) = 10rem
     <div className="flex flex-col gap-4 h-[calc(100dvh-10rem)] lg:h-auto overflow-hidden w-full">
@@ -106,7 +79,7 @@ export default function Movimientos() {
       {/* Header */}
       <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-xl font-black text-stone-800">Movimientos</h1>
+          <h1 className="text-xl font-black text-stone-800">Caja</h1>
           <p className="text-sm text-stone-400">Ingresos y egresos</p>
         </div>
         <button
@@ -148,26 +121,7 @@ export default function Movimientos() {
         </div>
       </div>
 
-      {/* Tabs principal */}
-      <div className="flex bg-stone-100 rounded-xl p-1 gap-1 shrink-0">
-        {[
-          ["todos", "Todos"],
-          ["eventos", "Por Evento"],
-        ].map(([k, l]) => (
-          <button
-            key={k}
-            onClick={() => setTabPrincipal(k)}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all
-              ${tabPrincipal === k ? "bg-white text-amber-600 shadow-sm" : "text-stone-500"}`}
-          >
-            {l}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Tab Todos ── */}
-      {tabPrincipal === "todos" && (
-        <div className="flex flex-col flex-1 min-h-0 gap-3">
+      <div className="flex flex-col flex-1 min-h-0 gap-3">
           {/* Filtros */}
           <div className="flex gap-2 shrink-0">
             {[
@@ -240,22 +194,33 @@ export default function Movimientos() {
                     >
                       {m.tipo === MOVIMIENTO_TIPO.INGRESO ? "+" : "-"}S/{Number(m.monto).toFixed(2)}
                     </span>
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                      <button
-                        onClick={() => setModalEditar(m)}
-                        className="p-1.5 rounded-lg text-stone-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
-                        title="Editar"
+                    {/* Movimientos de abono no se editan/eliminan aquí:
+                        se anula el abono desde Pagos y la deuda vuelve a pendiente */}
+                    {m.abono_id ? (
+                      <span
+                        className="text-[9px] font-bold text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        title="Este movimiento proviene de un pago. Para revertirlo, anula el abono desde la sección Pagos."
                       >
-                        <Pencil size={13} />
-                      </button>
-                      <button
-                        onClick={() => setModalEliminar(m)}
-                        className="p-1.5 rounded-lg text-stone-300 hover:text-red-400 hover:bg-red-50 transition-colors"
-                        title="Eliminar"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
+                        vía Pagos
+                      </span>
+                    ) : (
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <button
+                          onClick={() => setModalEditar(m)}
+                          className="p-1.5 rounded-lg text-stone-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"
+                          title="Editar"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                        <button
+                          onClick={() => setModalEliminar(m)}
+                          className="p-1.5 rounded-lg text-stone-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                          title="Eliminar"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}
@@ -285,113 +250,6 @@ export default function Movimientos() {
             </div>
           )}
         </div>
-      )}
-
-      {/* ── Tab Por Evento ── */}
-      {tabPrincipal === "eventos" && (
-        <div className="flex-1 min-h-0 rounded-2xl border border-stone-100 overflow-hidden">
-          <div className="h-full overflow-y-auto bg-white divide-y divide-stone-50">
-            {loadingEventos ? (
-              <div className="flex justify-center py-10">
-                <Loader2 size={24} className="text-amber-400 animate-spin" />
-              </div>
-            ) : eventos.filter((e) => [0, 3, 4].includes(e.tipo)).length === 0 ? (
-              <p className="text-center text-stone-400 text-sm py-10">
-                Sin eventos
-              </p>
-            ) : (
-              eventos
-                .filter((e) => [0, 3, 4].includes(e.tipo))
-                .map((e) => {
-                  const esFuturo = e.fecha_inicio && e.fecha_inicio.slice(0, 10) > today();
-                  return (
-                  <div
-                    key={e.id}
-                    onClick={() => setEventoDetalle(e)}
-                    className={`w-full flex flex-col gap-2 px-4 py-3 transition-colors cursor-pointer border-b border-stone-50 last:border-0
-                      ${esFuturo ? "bg-blue-50/50 hover:bg-blue-50" : "hover:bg-stone-50"}`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0
-                        ${esFuturo ? "bg-blue-100" : "bg-amber-50"}`}>
-                        <Users size={15} className={esFuturo ? "text-blue-500" : "text-amber-500"} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-bold text-stone-700 truncate">
-                            {e.titulo}
-                          </p>
-                          {esFuturo && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-600 shrink-0">
-                              PRÓXIMO
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs text-stone-400">
-                          S/ {Number(e.multa_monto).toFixed(2)} · {formatFecha(e.fecha_inicio)}
-                        </p>
-                      </div>
-                      <ChevronRight size={16} className="text-stone-300 shrink-0" />
-                    </div>
-
-                    {e.resumen_pagos && (
-                      <div className="ml-12 flex flex-col gap-1.5">
-                        <div className="flex gap-2">
-                          <div className="flex-1 bg-stone-50 rounded-xl px-3 py-2">
-                            {e.tipo === 0 ? (
-                              <>
-                                <p className="text-[10px] text-stone-400">Multas</p>
-                                <p className="text-xs font-black text-stone-700">
-                                  {e.resumen_pagos.multas_count ?? 0}
-                                  <span className="font-normal text-stone-400"> generadas</span>
-                                </p>
-                              </>
-                            ) : (
-                              <>
-                                <p className="text-[10px] text-stone-400">Padres</p>
-                                <p className="text-xs font-black text-stone-700">
-                                  {e.resumen_pagos.pagados}
-                                  <span className="font-normal text-stone-400">/{e.resumen_pagos.total_padres}</span>
-                                </p>
-                              </>
-                            )}
-                          </div>
-                          <div className="flex-1 bg-emerald-50 rounded-xl px-3 py-2">
-                            <p className="text-[10px] text-emerald-600">Recaudado</p>
-                            <p className="text-xs font-black text-emerald-700">
-                              S/ {Number(e.resumen_pagos.monto_recaudado).toFixed(2)}
-                            </p>
-                          </div>
-                          <div className="flex-1 bg-amber-50 rounded-xl px-3 py-2">
-                            <p className="text-[10px] text-amber-600">Esperado</p>
-                            <p className="text-xs font-black text-amber-700">
-                              S/ {Number(e.resumen_pagos.monto_esperado).toFixed(2)}
-                            </p>
-                          </div>
-                        </div>
-                        {e.resumen_pagos.monto_entregado > 0 && (
-                          <button
-                            onClick={(ev) => { ev.stopPropagation(); setModalRecibos(e); }}
-                            className="flex items-center justify-between bg-red-50 hover:bg-red-100 rounded-xl px-3 py-2 w-full transition-colors"
-                          >
-                            <div className="flex items-center gap-1.5">
-                              <TrendingDown size={13} className="text-red-400 shrink-0" />
-                              <p className="text-[10px] text-red-500 font-bold">Entregado / Gastos</p>
-                            </div>
-                            <p className="text-xs font-black text-red-500">
-                              - S/ {Number(e.resumen_pagos.monto_entregado).toFixed(2)}
-                            </p>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-                })
-            )}
-          </div>
-        </div>
-      )}
 
       {modal && (
         <ModalNuevoMovimiento
@@ -403,14 +261,6 @@ export default function Movimientos() {
             reload();
           }}
           onError={(msg) => showToast(msg, "err")}
-        />
-      )}
-
-      {modalRecibos && (
-        <ModalRecibosEvento
-          eventoId={modalRecibos.id}
-          titulo={modalRecibos.titulo}
-          onClose={() => setModalRecibos(null)}
         />
       )}
 

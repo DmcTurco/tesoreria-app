@@ -121,7 +121,7 @@ export default function NuevoAbono() {
           </div>
           <div className="min-w-0">
             <h1 className="text-base font-black text-white leading-tight">
-              Registrar abono
+              Registrar pago
             </h1>
             <p className="text-xs text-amber-100 truncate">
               {padreActivo ? padreActivo.nombre : "Selecciona un padre para continuar"}

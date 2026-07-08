@@ -19,17 +19,18 @@ import {
 } from "lucide-react";
 
 // nav por rol
+// `section` agrupa visualmente el menú; `mobile` marca los 5 del bottom nav.
 const NAV_TESORERO = [
-  { key: "resumen", label: "Resumen", icon: LayoutDashboard },
-  { key: "padres", label: "Padres", icon: Users },
-  { key: "pagos", label: "Pagos", icon: CreditCard },
-  { key: "movimientos", label: "Movimientos", icon: ArrowLeftRight },
-  { key: "eventos", label: "Eventos", icon: CalendarDays },
-  { key: "multas", label: "Multas", icon: AlertTriangle },
-  { key: "presupuesto", label: "Presupuesto", icon: PiggyBank },
-  { key: "exportar",          label: "Exportar",    icon: FileDown },
-  { key: "reporte-deudores",  label: "Deudores",    icon: FileText },
-  { key: "admin",             label: "Admin DB",    icon: Database },
+  { key: "resumen", label: "Resumen", icon: LayoutDashboard, section: "Principal", mobile: true },
+  { key: "padres",  label: "Padres",  icon: Users,           section: "Principal", mobile: true },
+  { key: "eventos", label: "Eventos", icon: CalendarDays,    section: "Principal", mobile: true },
+  { key: "pagos",       label: "Pagos",       icon: CreditCard,     section: "Dinero", mobile: true },
+  { key: "multas",      label: "Multas",      icon: AlertTriangle,  section: "Dinero" },
+  { key: "movimientos", label: "Caja",        icon: ArrowLeftRight, section: "Dinero", mobile: true },
+  { key: "presupuesto", label: "Presupuesto", icon: PiggyBank,      section: "Dinero" },
+  { key: "reporte-deudores", label: "Deudores", icon: FileText, section: "Herramientas" },
+  { key: "exportar",         label: "Exportar", icon: FileDown, section: "Herramientas" },
+  { key: "admin",            label: "Admin DB", icon: Database, section: "Herramientas" },
 ];
 
 const NAV_PROFESORA = [
@@ -98,29 +99,36 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 flex flex-col gap-0.5 overflow-y-auto">
-          {nav.map(({ key, label, icon: Icon }) => {
+          {nav.map(({ key, label, icon: Icon, section }, i) => {
             const active = tab === key;
+            const nuevaSeccion = section && section !== nav[i - 1]?.section;
             return (
-              <button
-                key={key}
-                onClick={() => onTabChange(key)}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-left
-                  ${
-                    active
-                      ? "bg-amber-50 text-amber-700"
-                      : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
-                  }`}
-              >
-                <Icon
-                  size={17}
-                  strokeWidth={active ? 2.2 : 1.8}
-                  className={active ? "text-amber-500" : "text-stone-400"}
-                />
-                {label}
-                {active && (
-                  <ChevronRight size={13} className="ml-auto text-amber-400" />
+              <div key={key} className="flex flex-col">
+                {nuevaSeccion && (
+                  <p className={`px-3 text-[10px] font-black uppercase tracking-wider text-stone-300 ${i > 0 ? "mt-4" : ""} mb-1`}>
+                    {section}
+                  </p>
                 )}
-              </button>
+                <button
+                  onClick={() => onTabChange(key)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all text-left
+                    ${
+                      active
+                        ? "bg-amber-50 text-amber-700"
+                        : "text-stone-500 hover:bg-stone-50 hover:text-stone-700"
+                    }`}
+                >
+                  <Icon
+                    size={17}
+                    strokeWidth={active ? 2.2 : 1.8}
+                    className={active ? "text-amber-500" : "text-stone-400"}
+                  />
+                  {label}
+                  {active && (
+                    <ChevronRight size={13} className="ml-auto text-amber-400" />
+                  )}
+                </button>
+              </div>
             );
           })}
         </nav>
@@ -187,25 +195,32 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
                 <X size={20} className="text-stone-400" />
               </button>
             </div>
-            <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5">
-              {nav.map(({ key, label, icon: Icon }) => {
+            <nav className="flex-1 px-3 py-3 flex flex-col gap-0.5 overflow-y-auto">
+              {nav.map(({ key, label, icon: Icon, section }, i) => {
                 const active = tab === key;
+                const nuevaSeccion = section && section !== nav[i - 1]?.section;
                 return (
-                  <button
-                    key={key}
-                    onClick={() => {
-                      onTabChange(key);
-                      setOpen(false);
-                    }}
-                    className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all text-left
-                      ${active ? "bg-amber-50 text-amber-700" : "text-stone-500 hover:bg-stone-50"}`}
-                  >
-                    <Icon
-                      size={17}
-                      className={active ? "text-amber-500" : "text-stone-400"}
-                    />
-                    {label}
-                  </button>
+                  <div key={key} className="flex flex-col">
+                    {nuevaSeccion && (
+                      <p className={`px-3 text-[10px] font-black uppercase tracking-wider text-stone-300 ${i > 0 ? "mt-3" : ""} mb-1`}>
+                        {section}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => {
+                        onTabChange(key);
+                        setOpen(false);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold transition-all text-left
+                        ${active ? "bg-amber-50 text-amber-700" : "text-stone-500 hover:bg-stone-50"}`}
+                    >
+                      <Icon
+                        size={17}
+                        className={active ? "text-amber-500" : "text-stone-400"}
+                      />
+                      {label}
+                    </button>
+                  </div>
                 );
               })}
             </nav>
@@ -223,7 +238,7 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
 
       {/* ── Bottom nav mobile ────────────────────────────────────────── */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-stone-100 flex">
-        {nav.slice(0, 5).map(({ key, label, icon: Icon }) => {
+        {(nav.some((n) => n.mobile) ? nav.filter((n) => n.mobile) : nav.slice(0, 5)).map(({ key, label, icon: Icon }) => {
           const active = tab === key;
           return (
             <button

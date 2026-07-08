@@ -3,10 +3,10 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { EVENTO_TIPO_LABEL, EVENTO_ESTADO } from "../../../constants/estados";
 import useApi from "@/hook/useApi";
 import TabPadresEvento from "./TabPadresEvento";
+import TabPagosEvento from "./TabPagosEvento";
 import { Field, Row, formatFecha } from "../../../utils/utility";
 import { useAuth } from "@/hook/useAuth";
-import TabAjustesEvento from "./TabAjustesEvento";
-import { useAjustesEvento } from "@/hook/useAjustesEvento"; // ← nuevo
+import { useAjustesEvento } from "@/hook/useAjustesEvento";
 
 export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToast }) {
     const { esTesorero } = useAuth();
@@ -43,13 +43,22 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
     }, [evento.id]);
 
     // ── Tabs ──────────────────────────────────────────────────────────────────
+    // "Pagos" = estado de cuenta del evento (fuente única del dinero):
+    // pagos por padre, ajustes por cambio de precio, gastos e historial.
+    const tieneDinero = evento.tipo === 3 || evento.tipo === 4
+        || evento.tipo === 0 || evento.tiene_multa;
+
     const tabs = [
         ["info",   "Información"],
         ["padres", "Padres"],
+        ["pagos",  ajustesPendientes ? "⚠️ Pagos" : "Pagos"],
         ["editar", "Editar"],
     ];
-    if (evento.tipo === 3) tabs.splice(1, 1);
-    if (ajustesPendientes) tabs.push(["ajustes", "⚠️ Ajustes"]);
+    if (evento.tipo === 3) tabs.splice(1, 1);          // cuota: sin pestaña Padres
+    if (!tieneDinero || !esTesorero) {
+        const i = tabs.findIndex(([k]) => k === "pagos");
+        if (i !== -1) tabs.splice(i, 1);               // sin dinero o sin permiso: sin Pagos
+    }
 
     // ── Guardar ───────────────────────────────────────────────────────────────
     const handleSave = async () => {
@@ -82,7 +91,7 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
 
             if (hayAjustes) {
                 setAjustesPendientes(ajustes);
-                setTab("ajustes");
+                setTab("pagos");
                 onToast("Evento actualizado — hay ajustes pendientes", "warn");
             } else {
                 onSaved("Evento actualizado");
@@ -259,15 +268,13 @@ export default function DetalleEvento({ evento: inicial, onBack, onSaved, onToas
                     </>
                 )}
 
-                {/* ── Ajustes ── */}
-                {tab === "ajustes" && ajustesPendientes && (
-                    <TabAjustesEvento
+                {/* ── Pagos (estado de cuenta) ── */}
+                {tab === "pagos" && (
+                    <TabPagosEvento
                         evento={evento}
-                        resumen={ajustesPendientes}
                         onToast={onToast}
-                        onResuelto={() => {
+                        onAjustesResueltos={() => {
                             limpiarAjustes();
-                            setTab("info");
                             onToast("Todos los ajustes resueltos");
                         }}
                     />

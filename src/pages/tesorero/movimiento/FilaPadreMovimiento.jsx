@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { TrendingUp, TrendingDown, ChevronDown, ShieldCheck, X, Loader2 } from "lucide-react";
+import { TrendingUp, TrendingDown, ChevronDown, ShieldCheck, X, Loader2, RotateCcw } from "lucide-react";
 import useApi from "../../../hook/useApi";
 
 export default function FilaPadreMovimiento({ p, precioHistorial, eventoId, onRefresh }) {
@@ -8,6 +8,7 @@ export default function FilaPadreMovimiento({ p, precioHistorial, eventoId, onRe
     const [modalExonerar, setModalExonerar] = useState(false);
     const [motivoExonerar, setMotivoExonerar] = useState("");
     const [loadingExonerar, setLoadingExonerar] = useState(false);
+    const [revertiendo, setRevertiendo] = useState(false);
     const api = useApi();
 
     const esExonerado   = p.estado === 4;
@@ -19,9 +20,9 @@ export default function FilaPadreMovimiento({ p, precioHistorial, eventoId, onRe
         if (!motivoExonerar.trim()) return;
         setLoadingExonerar(true);
         try {
-            await api.post(`/eventos/${eventoId}/exonerar-padre`, {
-                padre_id: p.padre_id,
-                motivo_exoneracion: motivoExonerar.trim(),
+            await api.put(`/eventos/${eventoId}/quitar-padre/${p.padre_id}`, {
+                tipo: "exonerado",
+                motivo: motivoExonerar.trim(),
             });
             setModalExonerar(false);
             setMotivoExonerar("");
@@ -42,6 +43,22 @@ export default function FilaPadreMovimiento({ p, precioHistorial, eventoId, onRe
 
     // Puede exonerar si no está ya exonerado/justificado y no tiene abonos activos vigentes
     const puedeExonerar = !esExonerado && !esJustificado && abonos.length === 0;
+
+    // Revertir exoneración/justificación (restaura pago y estado desde abonos activos)
+    const revertirExoneracion = async (e) => {
+        e.stopPropagation();
+        if (!p.evento_padre_id) return;
+        if (!window.confirm(`¿Revertir exoneración de ${p.nombre}?`)) return;
+        setRevertiendo(true);
+        try {
+            await api.put(`/evento-padres/${p.evento_padre_id}/revertir-exoneracion`);
+            onRefresh?.();
+        } catch (err) {
+            // el refresco mostrará el estado real
+        } finally {
+            setRevertiendo(false);
+        }
+    };
 
     return (
         <>
@@ -74,6 +91,18 @@ export default function FilaPadreMovimiento({ p, precioHistorial, eventoId, onRe
                         className="w-7 h-7 flex items-center justify-center rounded-full bg-stone-100 hover:bg-amber-100 text-stone-400 hover:text-amber-600 transition-colors shrink-0"
                     >
                         <ShieldCheck size={14} />
+                    </button>
+                )}
+                {(esExonerado || esJustificado) && p.evento_padre_id && (
+                    <button
+                        onClick={revertirExoneracion}
+                        disabled={revertiendo}
+                        title="Revertir exoneración"
+                        className="w-7 h-7 flex items-center justify-center rounded-full bg-amber-50 hover:bg-amber-100 text-amber-500 transition-colors shrink-0 disabled:opacity-60"
+                    >
+                        {revertiendo
+                            ? <Loader2 size={13} className="animate-spin" />
+                            : <RotateCcw size={13} />}
                     </button>
                 )}
                 <div className={`w-7 h-7 flex items-center justify-center rounded-full bg-stone-200 transition-transform duration-200 shrink-0 ${padreAbierto ? "rotate-180" : ""}`}>

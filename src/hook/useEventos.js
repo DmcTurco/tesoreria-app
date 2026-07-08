@@ -92,7 +92,7 @@ export const useEventos = () => {
     }, [api]);
 
     /**
-     * Exonerar a un padre de un evento específico
+     * Exonerar a un padre de un evento específico (usa el endpoint unificado quitar-padre)
      * @param {number}      eventoId
      * @param {number}      padreId
      * @param {string}      motivo_exoneracion
@@ -107,10 +107,10 @@ export const useEventos = () => {
             setLoading(true);
             setError(null);
 
-            const body = { padre_id: padreId, motivo_exoneracion };
+            const body = { tipo: "exonerado", motivo: motivo_exoneracion };
             if (fecha) body.fecha = fecha;
 
-            const response = await api.post(`/eventos/${eventoId}/exonerar-padre`, body);
+            const response = await api.put(`/eventos/${eventoId}/quitar-padre/${padreId}`, body);
             return response;
 
         } catch (err) {

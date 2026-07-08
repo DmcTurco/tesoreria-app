@@ -78,9 +78,9 @@ export default function Pagos() {
 
       <div className="flex items-center justify-between shrink-0">
         <div>
-          <h1 className="text-xl font-black text-stone-800">Abonos</h1>
+          <h1 className="text-xl font-black text-stone-800">Pagos</h1>
           <p className="text-sm text-stone-400">
-            Registro de cobros realizados
+            Historial de pagos registrados
           </p>
         </div>
         <button
@@ -157,9 +157,10 @@ export default function Pagos() {
 }
 
 // ── Grupo por padre ───────────────────────────────────────────────────────────
+// Historial simple de abonos. El detalle de ajustes por cambio de precio
+// vive en Eventos → Detalle → Pagos (estado de cuenta del evento).
 function GrupoPadre({ padre, abonos, total, handleAnular }) {
   const [padreAbierto, setPadreAbierto] = useState(false);
-  const [expandido, setExpandido] = useState(null);
 
   return (
     <div className="bg-white rounded-2xl border border-stone-100 overflow-hidden">
@@ -193,11 +194,6 @@ function GrupoPadre({ padre, abonos, total, handleAnular }) {
           {abonos.map((a) => {
             const esCobro = a.tipo_deuda === "cobro";
             const esAnulado = Number(a.estado) === 1;
-            const tieneAjustes = a.ajustes?.length > 0;
-            const montoNeto = a.monto_neto;
-            const diferencia =
-              montoNeto !== null ? montoNeto - Number(a.monto) : null;
-            const abierto = expandido === a.id;
 
             return (
               <div
@@ -205,14 +201,7 @@ function GrupoPadre({ padre, abonos, total, handleAnular }) {
                 className={`flex flex-col px-4 py-2.5 ${esAnulado ? "opacity-60" : ""}`}
               >
                 {/* Fila principal */}
-                <div
-                  className={`flex items-center gap-3 ${tieneAjustes && !esAnulado ? "cursor-pointer" : ""}`}
-                  onClick={() =>
-                    tieneAjustes &&
-                    !esAnulado &&
-                    setExpandido(abierto ? null : a.id)
-                  }
-                >
+                <div className="flex items-center gap-3">
                   <div
                     className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 ${esCobro ? "bg-blue-50" : "bg-red-50"}`}
                   >
@@ -232,37 +221,16 @@ function GrupoPadre({ padre, abonos, total, handleAnular }) {
                     </p>
                   </div>
 
-                  {tieneAjustes && !esAnulado && montoNeto !== null ? (
-                    <span className="flex items-center gap-1 shrink-0">
-                      <span className="text-xs text-stone-400 line-through">
-                        +S/ {Number(a.monto).toFixed(2)}
-                      </span>
-                      <span className="text-xs font-bold text-emerald-600">
-                        S/ {Number(montoNeto).toFixed(2)}
-                      </span>
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold text-emerald-600 shrink-0">
-                      +S/ {Number(a.monto).toFixed(2)}
-                    </span>
-                  )}
+                  <span className="text-xs font-bold text-emerald-600 shrink-0">
+                    +S/ {Number(a.monto).toFixed(2)}
+                  </span>
 
                   <span
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0
 						${esAnulado ? "bg-red-50 text-red-400" : "bg-emerald-50 text-emerald-600"}`}
                   >
-                    {" "}
-                    {/* ← rojo en vez de gris */}
                     {esAnulado ? "Anulado" : "Activo"}
                   </span>
-
-                  {tieneAjustes && !esAnulado && (
-                    <div
-                      className={`w-7 h-7 flex items-center justify-center rounded-full bg-stone-100 transition-transform duration-200 shrink-0 ${abierto ? "rotate-180" : ""}`}
-                    >
-                      <ChevronDown size={15} className="text-stone-500" />
-                    </div>
-                  )}
 
                   {!esAnulado && (
                     <button
@@ -282,45 +250,6 @@ function GrupoPadre({ padre, abonos, total, handleAnular }) {
                     <p className="text-[10px] text-stone-400 italic">
                       Motivo: {a.motivo_anulacion}
                     </p>
-                  </div>
-                )}
-                {/* Acordión ajustes */}
-                {tieneAjustes && !esAnulado && abierto && (
-                  <div className="ml-9 flex flex-col gap-1 bg-stone-50 rounded-lg px-3 py-2 mt-2">
-                    {a.ajustes.map((aj, i) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between gap-2"
-                      >
-                        <span className="text-[10px] text-stone-400 truncate flex-1">
-                          {aj.tipo === 1 ? "Devolución" : "Cobro extra"}
-                        </span>
-                        <span
-                          className={`text-[10px] font-bold shrink-0
-                          ${aj.tipo === 1 ? "text-blue-500" : "text-orange-500"}`}
-                        >
-                          {aj.tipo === 1 ? "-" : "+"}S/ {aj.monto.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-
-                    <div className="flex items-center justify-between border-t border-dashed border-stone-200 pt-1 mt-0.5">
-                      <span className="text-[10px] font-bold text-stone-500">
-                        Neto pagado
-                      </span>
-                      <span
-                        className={`text-[10px] font-black
-                        ${diferencia < 0 ? "text-blue-600" : diferencia > 0 ? "text-orange-600" : "text-emerald-600"}`}
-                      >
-                        S/ {montoNeto?.toFixed(2)}
-                        {diferencia !== null && diferencia !== 0 && (
-                          <span className="ml-1 font-normal text-stone-400">
-                            ({diferencia > 0 ? "+" : ""}
-                            {diferencia.toFixed(2)})
-                          </span>
-                        )}
-                      </span>
-                    </div>
                   </div>
                 )}
               </div>

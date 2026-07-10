@@ -38,9 +38,15 @@ function descargarCSV(contenido, nombre) {
   setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
+// Primer nombre de un nombre completo (ej. "Cielo Murillo" → "Cielo")
+function primerNombre(nombreCompleto) {
+  if (!nombreCompleto) return "—";
+  return nombreCompleto.trim().split(/\s+/)[0];
+}
+
 // ── Componente principal ──────────────────────────────────────────────────────
 export default function ReporteDeudores() {
-  const [tab, setTab] = useState("evento"); // "evento" | "padre"
+  const [tab, setTab] = useState("evento"); // "evento" | "padre" | "matriz"
 
   return (
     <div className="flex flex-col gap-5">
@@ -48,13 +54,13 @@ export default function ReporteDeudores() {
       <div>
         <h1 className="text-xl font-black text-stone-800">Reporte de Deudores</h1>
         <p className="text-sm text-stone-400 mt-0.5">
-          Consulta deudas por evento o por padre
+          Consulta deudas por evento, por padre o en una matriz general
         </p>
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-stone-100 rounded-xl p-1 gap-1 w-full max-w-xs">
-        {[["evento", "Por evento"], ["padre", "Por padre"]].map(([k, l]) => (
+      <div className="flex bg-stone-100 rounded-xl p-1 gap-1 w-full max-w-md">
+        {[["evento", "Por evento"], ["padre", "Por padre"], ["matriz", "Matriz"]].map(([k, l]) => (
           <button
             key={k}
             onClick={() => setTab(k)}
@@ -66,7 +72,9 @@ export default function ReporteDeudores() {
         ))}
       </div>
 
-      {tab === "evento" ? <ReporteDeudoresPorEvento /> : <ReporteDeudaPorPadre />}
+      {tab === "evento" && <ReporteDeudoresPorEvento />}
+      {tab === "padre" && <ReporteDeudaPorPadre />}
+      {tab === "matriz" && <ReporteDeudaMatriz />}
     </div>
   );
 }
@@ -716,6 +724,335 @@ function ReporteDeudoresPorEvento() {
               </table>
             </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Reporte matriz (padres x eventos) ─────────────────────────────────────────
+function ReporteDeudaMatriz() {
+  const api = useApi();
+  const [matriz, setMatriz]     = useState(null);   // { eventos: [], padres: [] }
+  const [retirados, setRetirados] = useState([]);
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState(null);
+
+  useEffect(() => {
+    let activo = true;
+    (async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const [dataMatriz, dataRetirados] = await Promise.all([
+          api.get("/reportes/deuda-matriz"),
+          api.get("/reportes/retirados-pendientes"),
+        ]);
+        if (!activo) return;
+        setMatriz(dataMatriz);
+        setRetirados(dataRetirados ?? []);
+      } catch (e) {
+        if (activo) setError(e.message ?? "Error al cargar la matriz de deuda");
+      } finally {
+        if (activo) setLoading(false);
+      }
+    })();
+    return () => { activo = false; };
+  }, []);
+
+  const eventos = matriz?.eventos ?? [];
+  const padres  = matriz?.padres  ?? [];
+
+  const totalesPorEvento = eventos.map((ev) =>
+    padres.reduce((s, p) => s + Number(p.deuda?.[ev.key] ?? 0), 0),
+  );
+  const totalGeneral = padres.reduce((s, p) => s + Number(p.total ?? 0), 0);
+
+  // ── CSV ────────────────────────────────────────────────────────────────────
+  const handleExportarCSV = () => {
+    if (!padres.length) return;
+    const cabeceras = ["Padre", "Hijo", ...eventos.map((e) => e.titulo), "Total"];
+    const filas = padres.map((p) => [
+      primerNombre(p.nombre), primerNombre(p.hijo),
+      ...eventos.map((ev) => (p.deuda?.[ev.key] ? Number(p.deuda[ev.key]).toFixed(2) : "")),
+      Number(p.total).toFixed(2),
+    ]);
+    descargarCSV(generarCSV(filas, cabeceras), `deuda_matriz_${today()}.csv`);
+  };
+
+  // ── PDF ────────────────────────────────────────────────────────────────────
+  const descargarPDF = () => {
+    if (!padres.length) return;
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const hoy = new Date().toLocaleDateString("es-PE", { day: "2-digit", month: "long", year: "numeric" });
+
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("Matriz de Deuda por Padre y Evento", 14, 14);
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(120, 120, 120);
+    doc.text(`Generado el ${hoy}  ·  ${padres.length} padres con deuda  ·  Total: S/ ${totalGeneral.toFixed(2)}`, 14, 20);
+    doc.setTextColor(0, 0, 0);
+
+    // Columnas anchas que llenan todo el ancho de la página: se calcula cuántos
+    // eventos caben por página con un ancho mínimo cómodo, y luego se reparte
+    // el espacio libre entre ellos para no dejar márgenes vacíos. Si no caben
+    // todos los eventos en una página, se arma un bloque de páginas por cada
+    // grupo de eventos, repitiendo Padre/Hijo/Total en cada uno.
+    const pageWidth   = doc.internal.pageSize.getWidth();
+    const margin      = 10;
+    const padreW      = 30;
+    const hijoW       = 30;
+    const totalW      = 26;
+    const anchoEventosDisponible = pageWidth - margin * 2 - padreW - hijoW - totalW;
+    const anchoMinimo = 36;
+    const colsPorPagina = Math.max(1, Math.floor(anchoEventosDisponible / anchoMinimo));
+    const anchoEvento   = anchoEventosDisponible / colsPorPagina; // llena el ancho completo
+
+    const bloques = [];
+    for (let i = 0; i < eventos.length; i += colsPorPagina) {
+      bloques.push(eventos.slice(i, i + colsPorPagina));
+    }
+    if (bloques.length === 0) bloques.push([]);
+
+    bloques.forEach((bloque, idx) => {
+      if (idx > 0) {
+        doc.addPage();
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.text(`Matriz de Deuda (continuación, página ${idx + 1} de ${bloques.length})`, 14, 12);
+      }
+
+      const head = [["Padre", "Hijo", ...bloque.map((e) => e.titulo), "Total"]];
+      const body = padres.map((p) => [
+        primerNombre(p.nombre), primerNombre(p.hijo),
+        ...bloque.map((ev) => (p.deuda?.[ev.key] ? Number(p.deuda[ev.key]).toFixed(2) : "-")),
+        Number(p.total).toFixed(2),
+      ]);
+      const foot = [[
+        "TOTAL", "",
+        ...bloque.map((ev) => {
+          const i = eventos.findIndex((e) => e.key === ev.key);
+          return totalesPorEvento[i] > 0 ? totalesPorEvento[i].toFixed(2) : "-";
+        }),
+        totalGeneral.toFixed(2),
+      ]];
+
+      const columnStyles = { 0: { cellWidth: padreW }, 1: { cellWidth: hijoW } };
+      bloque.forEach((_, i) => { columnStyles[2 + i] = { cellWidth: anchoEvento, halign: "right" }; });
+      columnStyles[2 + bloque.length] = { cellWidth: totalW, halign: "right", fontStyle: "bold" };
+
+      autoTable(doc, {
+        startY: idx === 0 ? 26 : 18,
+        head,
+        body,
+        foot,
+        styles:      { fontSize: 9, cellPadding: 2.5, overflow: "linebreak" },
+        headStyles:  { fillColor: [245, 158, 11], textColor: 255, fontStyle: "bold", fontSize: 9, valign: "middle" },
+        footStyles:  { fillColor: [254, 243, 199], textColor: [120, 53, 15], fontStyle: "bold", fontSize: 9 },
+        bodyStyles:  { fontSize: 9 },
+        alternateRowStyles: { fillColor: [250, 250, 249] },
+        columnStyles,
+        margin: { left: margin, right: margin },
+      });
+    });
+
+    // Segunda tabla: eventos con retirados pendientes (en página nueva)
+    if (retirados.length > 0) {
+      doc.addPage();
+      doc.setFontSize(14);
+      doc.setFont("helvetica", "bold");
+      doc.text("Eventos que deben evitar a los retirados", 14, 14);
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(120, 120, 120);
+      doc.text("Padres retirados con una asignación pendiente en algún evento", 14, 20);
+      doc.setTextColor(0, 0, 0);
+
+      autoTable(doc, {
+        startY: 26,
+        head: [["Evento", "Fecha", "Padre", "Fecha retiro", "Asignado (S/)", "Pagado (S/)", "Acción sugerida"]],
+        body: retirados.map((r) => [
+          r.evento_titulo ?? "—",
+          r.evento_fecha ?? "—",
+          primerNombre(r.padre_nombre),
+          r.fecha_retiro ?? "—",
+          Number(r.monto_asignado ?? 0).toFixed(2),
+          Number(r.monto_pagado ?? 0).toFixed(2),
+          r.accion_sugerida === "eliminar_sin_riesgo" ? "Eliminar sin riesgo" : "Revisar (tiene pagos)",
+        ]),
+        styles:     { fontSize: 9, cellPadding: 2.5 },
+        headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: "bold", fontSize: 9 },
+        alternateRowStyles: { fillColor: [250, 250, 249] },
+        margin: { left: 14, right: 14 },
+      });
+    }
+
+    doc.save(`deuda_matriz_${today()}.pdf`);
+  };
+
+  return (
+    <div className="flex flex-col gap-5">
+      {loading && (
+        <div className="flex justify-center py-10">
+          <Loader2 size={24} className="text-amber-400 animate-spin" />
+        </div>
+      )}
+
+      {error && !loading && (
+        <div className="flex items-center gap-2 bg-red-50 border border-red-100 rounded-2xl px-4 py-3">
+          <AlertCircle size={16} className="text-red-400 shrink-0" />
+          <p className="text-sm text-red-500 font-medium">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && (
+        <div className="bg-white rounded-2xl border border-stone-100 p-5 flex flex-col gap-4">
+          {/* Totales + acciones */}
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex gap-5">
+              <div>
+                <p className="text-2xl font-black text-stone-800">{padres.length}</p>
+                <p className="text-xs text-stone-400">padres con deuda</p>
+              </div>
+              <div>
+                <p className="text-2xl font-black text-red-500">S/ {totalGeneral.toFixed(2)}</p>
+                <p className="text-xs text-stone-400">deuda total</p>
+              </div>
+            </div>
+            {padres.length > 0 && (
+              <div className="flex gap-2">
+                <button
+                  onClick={handleExportarCSV}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-stone-100 hover:bg-stone-200
+                    text-stone-600 text-xs font-bold rounded-xl transition-colors"
+                >
+                  <Download size={13} /> CSV
+                </button>
+                <button
+                  onClick={descargarPDF}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600
+                    text-white text-xs font-bold rounded-xl transition-colors"
+                >
+                  <FileDown size={13} /> PDF
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Tabla matriz */}
+          {padres.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                <CheckCircle size={18} className="text-emerald-500" />
+              </div>
+              <p className="text-sm font-bold text-stone-600">Sin padres con deuda</p>
+              <p className="text-xs text-stone-400">Todos al día</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto -mx-1">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b-2 border-stone-100">
+                    <th className="pb-2.5 px-2 text-left text-[10px] font-bold text-stone-400 uppercase tracking-wide sticky left-0 bg-white">Padre</th>
+                    <th className="pb-2.5 px-2 text-left text-[10px] font-bold text-stone-400 uppercase tracking-wide">Hijo</th>
+                    {eventos.map((ev) => (
+                      <th
+                        key={ev.key}
+                        title={ev.titulo}
+                        className="pb-2.5 px-2 text-right text-[10px] font-bold text-stone-400 uppercase tracking-wide max-w-[90px]"
+                      >
+                        <span className="line-clamp-2">{ev.titulo}</span>
+                      </th>
+                    ))}
+                    <th className="pb-2.5 px-2 text-right text-[10px] font-bold text-stone-500 uppercase tracking-wide">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {padres.map((p) => (
+                    <tr key={p.id} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
+                      <td className="py-2 px-2 sticky left-0 bg-white">
+                        <p className="font-bold text-stone-700">{primerNombre(p.nombre)}</p>
+                      </td>
+                      <td className="py-2 px-2 text-stone-600">{primerNombre(p.hijo)}</td>
+                      {eventos.map((ev) => {
+                        const val = p.deuda?.[ev.key];
+                        return (
+                          <td key={ev.key} className="py-2 px-2 text-right text-stone-600">
+                            {val ? `S/ ${Number(val).toFixed(2)}` : <span className="text-stone-300">—</span>}
+                          </td>
+                        );
+                      })}
+                      <td className="py-2 px-2 text-right font-bold text-red-500">S/ {Number(p.total).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="border-t-2 border-stone-200">
+                    <td colSpan={2} className="py-2.5 px-2 text-right text-xs font-bold text-stone-500 sticky left-0 bg-stone-50">
+                      Total por evento:
+                    </td>
+                    {totalesPorEvento.map((t, i) => (
+                      <td key={eventos[i].key} className="py-2.5 px-2 text-right text-xs font-bold text-stone-600">
+                        {t > 0 ? `S/ ${t.toFixed(2)}` : "—"}
+                      </td>
+                    ))}
+                    <td className="py-2.5 px-2 text-right text-sm font-black text-red-500">
+                      S/ {totalGeneral.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Retirados con eventos pendientes */}
+      {!loading && !error && retirados.length > 0 && (
+        <div className="bg-white rounded-2xl border border-red-100 p-5 flex flex-col gap-4">
+          <div>
+            <h2 className="text-sm font-black text-stone-800 flex items-center gap-2">
+              <UserX size={16} className="text-red-400" />
+              Eventos que deben evitar a los retirados
+            </h2>
+            <p className="text-xs text-stone-400 mt-0.5">
+              Padres retirados que siguen con una asignación pendiente en algún evento
+            </p>
+          </div>
+          <div className="overflow-x-auto -mx-1">
+            <table className="w-full text-xs min-w-[600px]">
+              <thead>
+                <tr className="border-b-2 border-stone-100">
+                  {["Evento", "Fecha", "Padre", "Retirado desde", "Asignado", "Pagado", "Acción sugerida"].map((h, i) => (
+                    <th key={h} className={`pb-2.5 px-2 text-[10px] font-bold text-stone-400 uppercase tracking-wide ${i >= 4 ? "text-right" : "text-left"}`}>
+                      {h}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {retirados.map((r) => (
+                  <tr key={r.evento_padre_id} className="border-b border-stone-50 hover:bg-stone-50 transition-colors">
+                    <td className="py-2 px-2 font-semibold text-stone-700">{r.evento_titulo ?? "—"}</td>
+                    <td className="py-2 px-2 text-stone-500">{r.evento_fecha ?? "—"}</td>
+                    <td className="py-2 px-2 text-stone-600">{primerNombre(r.padre_nombre)}</td>
+                    <td className="py-2 px-2 text-stone-500">{r.fecha_retiro ?? "—"}</td>
+                    <td className="py-2 px-2 text-right text-stone-600">S/ {Number(r.monto_asignado ?? 0).toFixed(2)}</td>
+                    <td className="py-2 px-2 text-right text-emerald-600">S/ {Number(r.monto_pagado ?? 0).toFixed(2)}</td>
+                    <td className="py-2 px-2 text-right">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                        r.accion_sugerida === "eliminar_sin_riesgo" ? "bg-emerald-50 text-emerald-600" : "bg-amber-50 text-amber-600"
+                      }`}>
+                        {r.accion_sugerida === "eliminar_sin_riesgo" ? "Eliminar sin riesgo" : "Revisar (tiene pagos)"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

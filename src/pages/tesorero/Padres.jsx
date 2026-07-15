@@ -11,8 +11,10 @@ import {
   UserCheck,
 } from "lucide-react";
 import { usePadres } from "../../hook/usePadres";
+import { useEventos } from "../../hook/useEventos";
 import useApi from "../../hook/useApi";
 import { filtrarTexto } from "../../utils/utility";
+import { EVENTO_TIPO, EVENTO_TIPO_LABEL, EVENTO_ESTADO } from "../../constants/estados";
 
 export default function Padres() {
   const [search, setSearch] = useState("");
@@ -221,10 +223,10 @@ function BtnPrimary({ onClick, loading, children }) {
   );
 }
 
-function Modal({ titulo, onClose, children }) {
+function Modal({ titulo, onClose, children, wide = false }) {
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center p-4">
-      <div className="bg-white w-full max-w-md rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className={`bg-white w-full ${wide ? "max-w-2xl" : "max-w-md"} rounded-2xl shadow-xl max-h-[90vh] overflow-y-auto`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 sticky top-0 bg-white z-10">
           <p className="font-black text-stone-800 text-sm truncate pr-4">{titulo}</p>
           <button onClick={onClose}>
@@ -277,6 +279,36 @@ function ModalNuevoPadre({ createPadre, onClose, onSaved, onError }) {
   const [loading, setLoading] = useState(false);
   const set = (k) => (value) => setForm((p) => ({ ...p, [k]: value }));
 
+  // ── Eventos activos por cobrar (cuotas y actividades) ──────────────────────
+  const { getEventos } = useEventos();
+  const [eventosCobrables, setEventosCobrables] = useState(null); // null = cargando
+  const [seleccionados, setSeleccionados] = useState(new Set());
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const evs = (await getEventos()) ?? [];
+        const cobrables = evs.filter(
+          (e) =>
+            e.estado === EVENTO_ESTADO.ACTIVO &&
+            [EVENTO_TIPO.CUOTA, EVENTO_TIPO.ACTIVIDAD].includes(e.tipo)
+        );
+        setEventosCobrables(cobrables);
+        // Por defecto todos marcados; el tesorero desmarca los que no aplican
+        setSeleccionados(new Set(cobrables.map((e) => e.id)));
+      } catch {
+        setEventosCobrables([]);
+      }
+    })();
+  }, []);
+
+  const toggleEvento = (id) =>
+    setSeleccionados((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
   const handleSave = async () => {
     if (!form.nombre || !form.hijo || !form.grado || !form.password) {
       onError("Completa todos los campos obligatorios");
@@ -284,7 +316,7 @@ function ModalNuevoPadre({ createPadre, onClose, onSaved, onError }) {
     }
     setLoading(true);
     try {
-      await createPadre(form);
+      await createPadre({ ...form, eventos_pagar: [...seleccionados] });
       onSaved();
     } catch (e) {
       onError(e.message ?? "Error al guardar");
@@ -294,42 +326,95 @@ function ModalNuevoPadre({ createPadre, onClose, onSaved, onError }) {
   };
 
   return (
-    <Modal titulo="Registrar padre / madre" onClose={onClose}>
+    <Modal titulo="Registrar padre / madre" onClose={onClose} wide>
       <div className="flex flex-col gap-3">
-        <Field
-          label="Nombre completo *"
-          value={form.nombre}
-          onChange={set("nombre")}
-          placeholder="María García López"
-        />
-        <Field
-          label="Nombre del alumno/a *"
-          value={form.hijo}
-          onChange={set("hijo")}
-          placeholder="Carlos García"
-        />
-        <Field
-          label="Grado y sección *"
-          value={form.grado}
-          onChange={set("grado")}
-          placeholder="3° A"
-        />
-        <Field
-          label="Teléfono"
-          value={form.telefono}
-          onChange={set("telefono")}
-          placeholder="987654321"
-        />
-        <Field
-          label="Contraseña inicial *"
-          type="password"
-          value={form.password}
-          onChange={set("password")}
-          placeholder="••••••••"
-        />
-        <p className="text-xs text-stone-400 -mt-2">
-          El usuario será el código generado automáticamente (ej: PAD-0001)
-        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* ── Columna izquierda: datos del padre ── */}
+          <div className="flex flex-col gap-3">
+            <Field
+              label="Nombre completo *"
+              value={form.nombre}
+              onChange={set("nombre")}
+              placeholder="María García López"
+            />
+            <Field
+              label="Nombre del alumno/a *"
+              value={form.hijo}
+              onChange={set("hijo")}
+              placeholder="Carlos García"
+            />
+            <Field
+              label="Grado y sección *"
+              value={form.grado}
+              onChange={set("grado")}
+              placeholder="3° A"
+            />
+            <Field
+              label="Teléfono"
+              value={form.telefono}
+              onChange={set("telefono")}
+              placeholder="987654321"
+            />
+            <Field
+              label="Contraseña inicial *"
+              type="password"
+              value={form.password}
+              onChange={set("password")}
+              placeholder="••••••••"
+            />
+            <p className="text-xs text-stone-400 -mt-1">
+              El usuario será el código generado automáticamente (ej: PAD-0001)
+            </p>
+          </div>
+
+          {/* ── Columna derecha: eventos activos por cobrar ── */}
+          <div className="flex flex-col">
+            {eventosCobrables === null && (
+              <div className="flex items-center gap-2 text-xs text-stone-400 pt-1">
+                <Loader2 size={13} className="animate-spin" /> Cargando eventos activos...
+              </div>
+            )}
+            {eventosCobrables?.length === 0 && (
+              <p className="text-xs text-stone-400 pt-1">
+                No hay cobros activos pendientes de asignar.
+              </p>
+            )}
+            {eventosCobrables?.length > 0 && (
+              <div className="flex flex-col gap-2 bg-stone-50 border border-stone-100 rounded-xl p-3 h-full">
+                <p className="text-xs font-bold text-stone-600">
+                  Cobros activos — marca los que sí debe pagar
+                </p>
+                <div className="flex flex-col gap-1 overflow-y-auto max-h-48 sm:max-h-72">
+                  {eventosCobrables.map((ev) => (
+                    <label
+                      key={ev.id}
+                      className="flex items-center gap-2.5 py-1.5 px-2 rounded-lg hover:bg-white cursor-pointer transition-colors"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={seleccionados.has(ev.id)}
+                        onChange={() => toggleEvento(ev.id)}
+                        className="accent-amber-500 w-4 h-4 shrink-0"
+                      />
+                      <span className="flex-1 min-w-0 text-xs text-stone-700 font-medium truncate">
+                        {ev.titulo}
+                      </span>
+                      <span className="text-[10px] font-bold text-stone-400 shrink-0">
+                        {EVENTO_TIPO_LABEL[ev.tipo]}
+                        {ev.multa_monto > 0 && ` · S/ ${Number(ev.multa_monto).toFixed(2)}`}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="text-[11px] text-stone-400 mt-auto">
+                  Los no marcados quedarán como <b>Exonerado</b> (motivo: ingreso
+                  posterior al evento). Puedes revertirlo luego desde el evento.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+
         <BtnPrimary onClick={handleSave} loading={loading}>
           Registrar
         </BtnPrimary>

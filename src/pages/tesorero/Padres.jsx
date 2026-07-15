@@ -275,7 +275,7 @@ function ModalNuevoPadre({ createPadre, onClose, onSaved, onError }) {
     password: "",
   });
   const [loading, setLoading] = useState(false);
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const set = (k) => (value) => setForm((p) => ({ ...p, [k]: value }));
 
   const handleSave = async () => {
     if (!form.nombre || !form.hijo || !form.grado || !form.password) {
@@ -295,43 +295,45 @@ function ModalNuevoPadre({ createPadre, onClose, onSaved, onError }) {
 
   return (
     <Modal titulo="Registrar padre / madre" onClose={onClose}>
-      <Field
-        label="Nombre completo *"
-        value={form.nombre}
-        onChange={set("nombre")}
-        placeholder="María García López"
-      />
-      <Field
-        label="Nombre del alumno/a *"
-        value={form.hijo}
-        onChange={set("hijo")}
-        placeholder="Carlos García"
-      />
-      <Field
-        label="Grado y sección *"
-        value={form.grado}
-        onChange={set("grado")}
-        placeholder="3° A"
-      />
-      <Field
-        label="Teléfono"
-        value={form.telefono}
-        onChange={set("telefono")}
-        placeholder="987654321"
-      />
-      <Field
-        label="Contraseña inicial *"
-        type="password"
-        value={form.password}
-        onChange={set("password")}
-        placeholder="••••••••"
-      />
-      <p className="text-xs text-stone-400 -mt-2">
-        El usuario será el código generado automáticamente (ej: PAD-0001)
-      </p>
-      <BtnPrimary onClick={handleSave} loading={loading}>
-        Registrar
-      </BtnPrimary>
+      <div className="flex flex-col gap-3">
+        <Field
+          label="Nombre completo *"
+          value={form.nombre}
+          onChange={set("nombre")}
+          placeholder="María García López"
+        />
+        <Field
+          label="Nombre del alumno/a *"
+          value={form.hijo}
+          onChange={set("hijo")}
+          placeholder="Carlos García"
+        />
+        <Field
+          label="Grado y sección *"
+          value={form.grado}
+          onChange={set("grado")}
+          placeholder="3° A"
+        />
+        <Field
+          label="Teléfono"
+          value={form.telefono}
+          onChange={set("telefono")}
+          placeholder="987654321"
+        />
+        <Field
+          label="Contraseña inicial *"
+          type="password"
+          value={form.password}
+          onChange={set("password")}
+          placeholder="••••••••"
+        />
+        <p className="text-xs text-stone-400 -mt-2">
+          El usuario será el código generado automáticamente (ej: PAD-0001)
+        </p>
+        <BtnPrimary onClick={handleSave} loading={loading}>
+          Registrar
+        </BtnPrimary>
+      </div>
     </Modal>
   );
 }
@@ -608,7 +610,7 @@ function TabEditar({ padre, onUpdated, onError }) {
   });
   const [loading, setLoading] = useState(false);
   const api = useApi();
-  const set = (k) => (e) => setForm((p) => ({ ...p, [k]: e.target.value }));
+  const set = (k) => (value) => setForm((p) => ({ ...p, [k]: value }));
 
   const handleSave = async () => {
     if (!form.nombre || !form.hijo || !form.grado) {

@@ -198,13 +198,13 @@ export default function Movimientos() {
                         se anula el abono desde Pagos y la deuda vuelve a pendiente */}
                     {m.abono_id ? (
                       <span
-                        className="text-[9px] font-bold text-stone-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        className="text-[9px] font-bold text-stone-300 shrink-0"
                         title="Este movimiento proviene de un pago. Para revertirlo, anula el abono desde la sección Pagos."
                       >
                         vía Pagos
                       </span>
                     ) : (
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         <button
                           onClick={() => setModalEditar(m)}
                           className="p-1.5 rounded-lg text-stone-300 hover:text-amber-500 hover:bg-amber-50 transition-colors"

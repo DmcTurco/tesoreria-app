@@ -136,7 +136,7 @@ function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
             title="Marcar asistencia"
             className="w-4 h-4 rounded-full bg-white/60 hover:bg-emerald-50 border border-stone-200
               hover:border-emerald-200 flex items-center justify-center transition-all
-              opacity-0 group-hover:opacity-100 ml-0.5"
+              ml-0.5 shrink-0"
           >
             {marcando
               ? <Loader2 size={8} className="text-emerald-400 animate-spin" strokeWidth={3} />
@@ -152,7 +152,7 @@ function PadreChip({ ep, evento, esTesorero, onRefresh, onToast }) {
             title="Gestionar asignación"
             className="w-4 h-4 rounded-full bg-white/60 hover:bg-red-50 border border-stone-200
               hover:border-red-200 flex items-center justify-center transition-all
-              opacity-0 group-hover:opacity-100 ml-0.5"
+              ml-0.5 shrink-0"
           >
             <UserMinus size={9} className="text-stone-400 hover:text-red-400" strokeWidth={2.5} />
           </button>

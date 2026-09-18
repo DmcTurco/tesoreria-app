@@ -116,7 +116,7 @@ export default function TabPadresPlano({ evento, onToast, esTesorero }) {
                     disabled={marcando === ep.padre_id}
                     title="Marcar asistencia"
                     className="w-7 h-7 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-100
-                      flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                      flex items-center justify-center transition-colors shrink-0"
                   >
                     {marcando === ep.padre_id
                       ? <Loader2 size={12} className="text-emerald-400 animate-spin" />
@@ -131,7 +131,7 @@ export default function TabPadresPlano({ evento, onToast, esTesorero }) {
                     onClick={() => setModalEx(ep)}
                     title="Exonerar"
                     className="w-7 h-7 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-100
-                      flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                      flex items-center justify-center transition-colors shrink-0"
                   >
                     <ShieldOff size={12} className="text-purple-400" />
                   </button>
@@ -144,7 +144,7 @@ export default function TabPadresPlano({ evento, onToast, esTesorero }) {
                     disabled={revertiendo === ep.id}
                     title="Revertir exoneración"
                     className="w-7 h-7 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-100
-                      flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100"
+                      flex items-center justify-center transition-colors shrink-0"
                   >
                     {revertiendo === ep.id
                       ? <Loader2 size={12} className="text-amber-400 animate-spin" />

@@ -7,12 +7,14 @@ import {
   Users,
   CalendarCheck,
   UserPlus,
+  UserMinus,
 } from "lucide-react";
 import { usePadres } from "@/hook/usePadres";
 import { EVENTO_TIPO_LABEL } from "../../../constants/estados";
 import { formatFecha, StatCard, filtrarTexto } from "../../../utils/utility";
 import useApi from "@/hook/useApi";
 import VistaAsignarDia from "./VistaAsignarDia";
+import ModalQuitarPadre from "./tabPadresEvento/ModalQuitarPadre";
 
 // ── Entrada principal ─────────────────────────────────────────────────────────
 export default function AsignarPadres({ evento, onBack, onDone, onToast }) {
@@ -55,6 +57,7 @@ function AsignarGuardia({ evento, onDone, onToast }) {
   const [fechas, setFechas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fechaSel, setFechaSel] = useState(null);
+  const [quitarEp, setQuitarEp] = useState(null);
   const api = useApi();
 
   const cargar = () => {
@@ -109,6 +112,7 @@ function AsignarGuardia({ evento, onDone, onToast }) {
   const totalIncompletos = fechas.length - totalCompletos;
 
   return (
+    <>
     <div className="flex flex-col gap-3">
       {/* Resumen */}
       <div className="grid grid-cols-3 gap-2">
@@ -237,12 +241,15 @@ function AsignarGuardia({ evento, onDone, onToast }) {
                 {(f.padres ?? []).length > 0 ? (
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {f.padres.map((ep) => (
-                      <span
+                      <button
                         key={ep.id}
-                        className="text-[10px] font-semibold px-2.5 py-1 bg-white border border-stone-200 rounded-xl text-stone-600"
+                        onClick={() => setQuitarEp({ ...ep, fecha: ep.fecha ?? f.fecha })}
+                        title="Quitar de esta fecha"
+                        className="group flex items-center gap-1 text-[10px] font-semibold pl-2.5 pr-1.5 py-1 bg-white border border-stone-200 rounded-xl text-stone-600 hover:border-red-200 hover:bg-red-50 transition-colors"
                       >
                         {ep.padre?.nombre?.split(" ").slice(0, 2).join(" ")}
-                      </span>
+                        <UserMinus size={10} className="text-stone-300 group-hover:text-red-400" />
+                      </button>
                     ))}
                   </div>
                 ) : (
@@ -256,6 +263,21 @@ function AsignarGuardia({ evento, onDone, onToast }) {
         })}
       </div>
     </div>
+
+    {quitarEp && (
+      <ModalQuitarPadre
+        ep={quitarEp}
+        evento={evento}
+        onClose={() => setQuitarEp(null)}
+        onDone={() => {
+          setQuitarEp(null);
+          cargar();
+          onToast("Padre quitado del evento");
+        }}
+        onError={onToast}
+      />
+    )}
+    </>
   );
 }
 
@@ -264,20 +286,23 @@ function AsignarManual({ evento, onDone, onToast }) {
   const [search, setSearch] = useState("");
   const [sel, setSel] = useState(new Set());
   const [saving, setSaving] = useState(false);
-  const [yaAsignados, setYaAsignados] = useState([]);
+  const [asignados, setAsignados] = useState([]); // registros completos (padre + estado)
+  const [quitarEp, setQuitarEp] = useState(null);
   const { padres, getPadres, loading } = usePadres();
   const api = useApi();
 
-  useEffect(() => {
-    getPadres();
-    // Cargar padres ya asignados para no mostrarlos
+  const cargarAsignados = () =>
     api
       .get(`/eventos/${evento.id}/padres`)
-      .then((r) =>
-        setYaAsignados((Array.isArray(r) ? r : []).map((ep) => ep.padre_id)),
-      )
+      .then((r) => setAsignados(Array.isArray(r) ? r : []))
       .catch(() => {});
+
+  useEffect(() => {
+    getPadres();
+    cargarAsignados();
   }, []);
+
+  const yaAsignados = asignados.map((ep) => ep.padre_id);
 
   const toggle = (id) => {
     setSel((prev) => {
@@ -310,7 +335,9 @@ function AsignarManual({ evento, onDone, onToast }) {
           }),
         ),
       );
-      onDone(`${sel.size} padre(s) asignados correctamente`);
+      onToast(`${sel.size} padre(s) asignados correctamente`);
+      setSel(new Set());
+      await cargarAsignados();
     } catch (e) {
       onToast(e.message ?? "Error al asignar", "err");
     } finally {
@@ -326,6 +353,38 @@ function AsignarManual({ evento, onDone, onToast }) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* Ya asignados — con opción de quitar */}
+      {asignados.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs font-bold text-stone-500 uppercase tracking-wide">
+            Asignados ({asignados.length})
+          </p>
+          <div className="bg-white rounded-2xl border border-stone-100 divide-y divide-stone-50 max-h-44 overflow-y-auto">
+            {asignados.map((ep) => (
+              <div key={ep.id} className="flex items-center gap-3 px-4 py-2.5 group">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-black text-emerald-700">
+                    {ep.padre?.nombre?.split(" ").slice(0, 2).map((w) => w[0]).join("") ?? "?"}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-stone-700 truncate">{ep.padre?.nombre ?? "—"}</p>
+                  <p className="text-[10px] text-stone-400">{ep.padre?.hijo}</p>
+                </div>
+                <button
+                  onClick={() => setQuitarEp(ep)}
+                  title="Quitar del evento"
+                  className="w-7 h-7 rounded-xl bg-stone-50 hover:bg-red-50 border border-stone-100 hover:border-red-200
+                    flex items-center justify-center transition-colors shrink-0"
+                >
+                  <UserMinus size={13} className="text-stone-400 hover:text-red-400" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Contador + seleccionar todos */}
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-stone-500">
@@ -379,6 +438,29 @@ function AsignarManual({ evento, onDone, onToast }) {
           `Asignar ${sel.size > 0 ? sel.size + " padre(s)" : ""}`
         )}
       </button>
+
+      {/* Botón listo */}
+      <button
+        onClick={() => onDone("Asignación completada")}
+        className="w-full h-10 border border-stone-200 text-stone-500 text-sm font-bold
+          rounded-xl hover:bg-stone-50 transition-colors"
+      >
+        Listo
+      </button>
+
+      {quitarEp && (
+        <ModalQuitarPadre
+          ep={quitarEp}
+          evento={evento}
+          onClose={() => setQuitarEp(null)}
+          onDone={() => {
+            setQuitarEp(null);
+            cargarAsignados();
+            onToast("Padre quitado del evento");
+          }}
+          onError={onToast}
+        />
+      )}
     </div>
   );
 }
@@ -390,6 +472,7 @@ function AsignarActividad({ evento, onDone, onToast }) {
   const [sel, setSel] = useState(new Set());
   const [saving, setSaving] = useState(false);
   const [asignados, setAsignados] = useState([]); // objetos completos con padre
+  const [quitarEp, setQuitarEp] = useState(null);
   const { padres, getPadres, loading } = usePadres();
   const api = useApi();
 
@@ -470,7 +553,15 @@ function AsignarActividad({ evento, onDone, onToast }) {
                   <p className="text-xs font-semibold text-stone-700 truncate">{ep.padre?.nombre ?? "—"}</p>
                   <p className="text-[10px] text-stone-400">{ep.padre?.hijo}</p>
                 </div>
-                <Check size={12} className="text-emerald-500 shrink-0" />
+                <Check size={14} className="text-emerald-500 shrink-0" />
+                <button
+                  onClick={() => setQuitarEp(ep)}
+                  title="Quitar del evento"
+                  className="w-7 h-7 rounded-xl bg-stone-50 hover:bg-red-50 border border-stone-100 hover:border-red-200
+                    flex items-center justify-center transition-colors shrink-0"
+                >
+                  <UserMinus size={13} className="text-stone-400 hover:text-red-400" />
+                </button>
               </div>
             ))}
           </div>
@@ -554,6 +645,20 @@ function AsignarActividad({ evento, onDone, onToast }) {
       >
         Listo
       </button>
+
+      {quitarEp && (
+        <ModalQuitarPadre
+          ep={quitarEp}
+          evento={evento}
+          onClose={() => setQuitarEp(null)}
+          onDone={() => {
+            setQuitarEp(null);
+            cargarAsignados();
+            onToast("Padre quitado del evento");
+          }}
+          onError={onToast}
+        />
+      )}
     </div>
   );
 }

@@ -9,7 +9,7 @@ export default function RequireAuth({ children, role }) {
     if (!token || !user) return <Navigate to="/login" replace />;
 
     if (role !== undefined && user.role !== role) {
-        return <Navigate to="/role" replace />;
+        return <Navigate to="/login" replace />;
     }
 
     return children;

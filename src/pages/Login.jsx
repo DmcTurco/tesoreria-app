@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   Building2,
   User,
@@ -7,73 +7,31 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  ChevronLeft,
   Loader2,
 } from "lucide-react";
 import { useLogin } from "../hook/useLogin";
 
-const ROL_STYLES = {
-  0: {
-    bg: "bg-orange-50",
-    blob1: "bg-amber-200",
-    blob2: "bg-yellow-100",
-    ring: "bg-amber-100",
-    icon: "text-amber-500",
-    badgeBg: "bg-amber-50",
-    badgeText: "text-amber-700",
-    divFrom: "#92400e",
-    divTo: "#f59e0b",
-    btnBg: "bg-amber-500 hover:bg-amber-600",
-    focusBorder: "focus:border-amber-400",
-    backHover: "hover:text-amber-600",
-  },
-  1: {
-    bg: "bg-teal-50",
-    blob1: "bg-teal-200",
-    blob2: "bg-emerald-100",
-    ring: "bg-teal-100",
-    icon: "text-teal-500",
-    badgeBg: "bg-teal-50",
-    badgeText: "text-teal-700",
-    divFrom: "#134e4a",
-    divTo: "#14b8a6",
-    btnBg: "bg-teal-600 hover:bg-teal-700",
-    focusBorder: "focus:border-teal-400",
-    backHover: "hover:text-teal-600",
-  },
-  2: {
-    bg: "bg-rose-50",
-    blob1: "bg-rose-200",
-    blob2: "bg-pink-100",
-    ring: "bg-rose-100",
-    icon: "text-rose-400",
-    badgeBg: "bg-rose-50",
-    badgeText: "text-rose-600",
-    divFrom: "#881337",
-    divTo: "#fb7185",
-    btnBg: "bg-rose-500 hover:bg-rose-600",
-    focusBorder: "focus:border-rose-300",
-    backHover: "hover:text-rose-500",
-  },
+const s = {
+  bg: "bg-orange-50",
+  blob1: "bg-amber-200",
+  blob2: "bg-yellow-100",
+  ring: "bg-amber-100",
+  icon: "text-amber-500",
+  badgeBg: "bg-amber-50",
+  badgeText: "text-amber-700",
+  divFrom: "#92400e",
+  divTo: "#f59e0b",
+  btnBg: "bg-amber-500 hover:bg-amber-600",
+  focusBorder: "focus:border-amber-400",
 };
 
 export default function Login() {
   const navigate = useNavigate();
-  const location = useLocation();
-
-  const rolSeleccionado = location.state?.rol ?? null;
 
   const [form, setForm] = useState({ username: "", password: "" });
   const [showPass, setShowPass] = useState(false);
 
   const { loading, error, login } = useLogin();
-
-  if (!rolSeleccionado) {
-    navigate("../role", { replace: true });
-    return null;
-  }
-
-  const s = ROL_STYLES[rolSeleccionado.value] ?? ROL_STYLES[0];
 
   const handleChange = (e) =>
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -81,11 +39,8 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { user } = await login(form);
-
-      // Redirigir según rol: 0 tesorero | 1 profesora | 2 padre
-      const rutas = { 0: "../dashboard", 1: "../profesora", 2: "../padre" };
-      navigate(rutas[user.role] ?? "../dashboard");
+      await login(form);
+      navigate("../dashboard");
     } catch {
       // El error ya lo maneja el hook en su estado `error`
     }
@@ -104,15 +59,6 @@ export default function Login() {
       />
 
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-stone-100 p-7 relative z-10">
-        {/* Volver */}
-        <button
-          onClick={() => navigate("../role")}
-          className={`flex items-center gap-1.5 text-stone-400 text-sm font-semibold mb-6 transition-colors ${s.backHover}`}
-        >
-          <ChevronLeft size={15} strokeWidth={2.5} />
-          Cambiar perfil
-        </button>
-
         {/* Cabecera */}
         <div className="text-center mb-5">
           <div
@@ -126,7 +72,7 @@ export default function Login() {
           <span
             className={`inline-block mt-2 px-3 py-0.5 rounded-full text-xs font-bold ${s.badgeBg} ${s.badgeText}`}
           >
-            {rolSeleccionado.label}
+            Tesorero
           </span>
         </div>
 

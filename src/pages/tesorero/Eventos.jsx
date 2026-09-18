@@ -3,6 +3,7 @@ import {
   Plus,
   CalendarDays,
   ChevronRight,
+  ChevronDown,
   Loader2,
   X,
   CheckSquare,
@@ -17,14 +18,20 @@ import useApi from "@/hook/useApi";
 import CrearEvento from "./evento/CrearEvento";
 import DetalleEvento from "./evento/DetalleEvento";
 import AsignarPadres from "./evento/AsignarPadres";
-import { Toast } from "../../utils/utility";
+import { Toast, today } from "../../utils/utility";
 import EventoCard from "./evento/EventoCard";
+
+const esFuturo = (e) =>
+  e.estado === EVENTO_ESTADO.ACTIVO &&
+  e.fecha_inicio &&
+  e.fecha_inicio.slice(0, 10) > today();
 
 export default function Eventos() {
   const [creando, setCreando] = useState(false);
   const [asignar, setAsignar] = useState(null); // evento para asignar padres
   const [toast, setToast] = useState(null);
   const [detalle, setDetalle] = useState(null);
+  const [mostrarProximos, setMostrarProximos] = useState(false);
 
   const { loading, error, eventos, getEventos, createEvento, cerrarEvento } =
     useEventos();
@@ -137,15 +144,47 @@ export default function Eventos() {
                 Sin eventos
               </p>
             ) : (
-              eventos.map((e) => (
-                <EventoCard
-                  key={e.id}
-                  evento={e}
-                  onDetalle={() => setDetalle(e)}
-                  onCerrar={() => handleCerrar(e)}
-                  onAsignar={() => setAsignar(e)}
-                />
-              ))
+              (() => {
+                const futuros = eventos.filter(esFuturo);
+                const visibles = mostrarProximos
+                  ? eventos
+                  : eventos.filter((e) => !esFuturo(e));
+
+                return (
+                  <>
+                    {futuros.length > 0 && (
+                      <button
+                        onClick={() => setMostrarProximos((p) => !p)}
+                        className="flex items-center justify-center gap-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold px-4 py-2.5 rounded-xl transition-colors"
+                      >
+                        <ChevronDown
+                          size={14}
+                          className={`transition-transform ${mostrarProximos ? "rotate-180" : ""}`}
+                        />
+                        {mostrarProximos
+                          ? "Ocultar próximos"
+                          : `Ver próximos (${futuros.length})`}
+                      </button>
+                    )}
+
+                    {visibles.length === 0 ? (
+                      <p className="text-center text-stone-400 text-sm py-10">
+                        Sin eventos en curso
+                      </p>
+                    ) : (
+                      visibles.map((e) => (
+                        <EventoCard
+                          key={e.id}
+                          evento={e}
+                          onDetalle={() => setDetalle(e)}
+                          onCerrar={() => handleCerrar(e)}
+                          onAsignar={() => setAsignar(e)}
+                        />
+                      ))
+                    )}
+                  </>
+                );
+              })()
             )}
           </div>
         </div>

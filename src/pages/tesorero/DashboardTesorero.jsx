@@ -8,7 +8,7 @@ export default function DashboardTesorero() {
   const user      = JSON.parse(localStorage.getItem("user") ?? "null");
   const token     = localStorage.getItem("auth_token");
 
-  if (!user || !token) return <Navigate to="/role" replace />;
+  if (!user || !token) return <Navigate to="/login" replace />;
 
    const tab = location.pathname.split("/").pop();
 

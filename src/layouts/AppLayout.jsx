@@ -35,25 +35,11 @@ const NAV_TESORERO = [
   { key: "admin",            label: "Admin DB", icon: Database, section: "Herramientas" },
 ];
 
-const NAV_PROFESORA = [
-  { key: "hoy", label: "Hoy", icon: CalendarDays },
-  { key: "escanear", label: "Escanear QR", icon: Users },
-  { key: "resumen", label: "Resumen", icon: LayoutDashboard },
-];
-
-const NAV_PADRE = [
-  { key: "estado", label: "Mi estado", icon: LayoutDashboard },
-  { key: "qr", label: "Mi QR", icon: Users },
-  { key: "eventos", label: "Eventos", icon: CalendarDays },
-];
-
-const NAV_BY_ROLE = { 0: NAV_TESORERO, 1: NAV_PROFESORA, 2: NAV_PADRE };
-
 export default function AppLayout({ user, tab, onTabChange, children }) {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const nav = NAV_BY_ROLE[user?.role] ?? NAV_TESORERO;
+  const nav = NAV_TESORERO;
 
   const handleLogout = async () => {
     try {
@@ -70,7 +56,7 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
     } finally {
       localStorage.removeItem("auth_token");
       localStorage.removeItem("user");
-      navigate("/role");
+      navigate("/login");
     }
   };
 
@@ -257,7 +243,7 @@ export default function AppLayout({ user, tab, onTabChange, children }) {
       </nav>
 
       {/* ── Main content ─────────────────────────────────────────────── */}
-      <main className="flex-1 lg:ml-56 pt-14 lg:pt-0 pb-14 lg:pb-0 min-h-screen">
+      <main className="flex-1 min-w-0 lg:ml-56 pt-14 lg:pt-0 pb-14 lg:pb-0 min-h-screen">
         <div className="max-w-5xl mx-auto px-4 pt-6 pb-2">{children}</div>
       </main>
     </div>

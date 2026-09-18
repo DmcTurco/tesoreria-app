@@ -1,9 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import RoleSelector from "./pages/RoleSelector";
 import Login from "./pages/Login";
 import DashboardTesorero from "./pages/tesorero/DashboardTesorero";
-import DashboardProfesora from "./pages/profesora/DashboardProfesora";
-import DashboardPadre from "./pages/padre/DashboardPadre";
 import RequireAuth from "./components/RequireAuth";
 
 // Secciones tesorero
@@ -20,28 +17,11 @@ import NuevoAbono        from "./pages/tesorero/NuevoAbono";
 import ReporteDeudores   from "./pages/tesorero/ReporteDeudores";
 import Balance           from "./pages/tesorero/Balance";
 
-import TablaComparativa from "./components/TablaComparativa";
-import ResumenProfe from "./pages/profesora/ResumenProfe";
-import Hoy from "./pages/profesora/Hoy";
-import EscanearQR from "./pages/profesora/EscanearQR";
-import MiEstado from "./pages/padre/MiEstado";
-import MiQR from "./pages/padre/MiQR";
-import Transparencia from "./pages/padre/Transparencia";
-
-// function App() {
-//   return (
-//     <div>
-//       <TablaComparativa />
-//     </div>
-//   );
-// }
-
 function App() {
   return (
     <BrowserRouter basename="/terminal/tesoreria/">
       <Routes>
-        <Route path="/"     element={<Navigate to="role" replace />} />
-        <Route path="role"  element={<RoleSelector />} />
+        <Route path="/"     element={<Navigate to="login" replace />} />
         <Route path="login" element={<Login />} />
 
         {/* ── Tesorero ── */}
@@ -62,29 +42,7 @@ function App() {
           <Route path="balance"          element={<Balance />} />
           <Route path="admin"         element={<AdminDB />} />
         </Route>
-
-        {/* ── Profesora ── */}
-        <Route path="profesora" element={
-          <RequireAuth role={1}><DashboardProfesora /></RequireAuth>
-        }>
-          <Route index            element={<Navigate to="resumen" replace />} />
-          <Route path="resumen"   element={<ResumenProfe />} />
-          <Route path="hoy"       element={<Hoy />} />
-          <Route path="escanear"  element={<EscanearQR />} />
-        </Route>
-
-        {/* ── Padre ── */}
-        <Route path="padre" element={
-          <RequireAuth role={2}><DashboardPadre /></RequireAuth>
-        }>
-          <Route index           element={<Navigate to="estado" replace />} />
-          <Route path="estado"   element={<MiEstado />} />
-          <Route path="qr"       element={<MiQR />} />
-          <Route path="eventos"  element={<Transparencia />} />
-        </Route>
       </Routes>
-
-
     </BrowserRouter>
   );
 }
